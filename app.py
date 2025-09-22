@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template, jsonify, request
 from pydantic import ValidationError
 from schemas import CalculationPayload
@@ -37,4 +38,8 @@ def calculate():
         return jsonify({"error": "An internal server error occurred."}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Debug mode is enabled ONLY if the FLASK_DEBUG environment variable is set to '1'
+    debug_mode = os.environ.get('FLASK_DEBUG') == '1'
+    # In a real production environment, use a production-ready WSGI server
+    # like Gunicorn or uWSGI instead of the built-in Flask development server.
+    app.run(debug=debug_mode)

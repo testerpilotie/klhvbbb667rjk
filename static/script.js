@@ -122,6 +122,12 @@ function updateChart(timeline, zoneLimits) {
     const svg = document.getElementById('bac-chart');
     if (!svg) return;
 
+    // Clear existing SVG content safely
+    while (svg.firstChild) {
+        svg.removeChild(svg.firstChild);
+    }
+
+    const svgNS = "http://www.w3.org/2000/svg";
     const width = 700;
     const height = 300;
     const margin = { top: 20, right: 50, bottom: 40, left: 60 };
@@ -135,34 +141,138 @@ function updateChart(timeline, zoneLimits) {
         return margin.top + chartHeight - (clampedBAC / maxBAC) * chartHeight;
     };
 
+    // Create elements
+    const defs = document.createElementNS(svgNS, 'defs');
+    const linearGradient = document.createElementNS(svgNS, 'linearGradient');
+    linearGradient.setAttribute('id', 'zoneGradient');
+    linearGradient.setAttribute('x1', '0%');
+    linearGradient.setAttribute('y1', '0%');
+    linearGradient.setAttribute('x2', '0%');
+    linearGradient.setAttribute('y2', '100%');
+
+    const stop1 = document.createElementNS(svgNS, 'stop');
+    stop1.setAttribute('offset', '0%');
+    stop1.setAttribute('style', 'stop-color:rgba(76,175,80,0.2)');
+    const stop2 = document.createElementNS(svgNS, 'stop');
+    stop2.setAttribute('offset', '100%');
+    stop2.setAttribute('style', 'stop-color:rgba(76,175,80,0.1)');
+
+    linearGradient.appendChild(stop1);
+    linearGradient.appendChild(stop2);
+    defs.appendChild(linearGradient);
+    svg.appendChild(defs);
+
+    // Axes lines
+    const yAxisLine = document.createElementNS(svgNS, 'line');
+    yAxisLine.setAttribute('x1', String(margin.left));
+    yAxisLine.setAttribute('y1', String(margin.top));
+    yAxisLine.setAttribute('x2', String(margin.left));
+    yAxisLine.setAttribute('y2', String(margin.top + chartHeight));
+    yAxisLine.setAttribute('stroke', '#eee');
+    yAxisLine.setAttribute('stroke-width', '1');
+    svg.appendChild(yAxisLine);
+
+    const xAxisLine = document.createElementNS(svgNS, 'line');
+    xAxisLine.setAttribute('x1', String(margin.left));
+    xAxisLine.setAttribute('y1', String(margin.top + chartHeight));
+    xAxisLine.setAttribute('x2', String(margin.left + chartWidth));
+    xAxisLine.setAttribute('y2', String(margin.top + chartHeight));
+    xAxisLine.setAttribute('stroke', '#eee');
+    xAxisLine.setAttribute('stroke-width', '1');
+    svg.appendChild(xAxisLine);
+
+    // Zone rectangle
+    const zoneRect = document.createElementNS(svgNS, 'rect');
+    zoneRect.setAttribute('x', String(margin.left));
+    zoneRect.setAttribute('y', String(yScale(zoneLimits.max)));
+    zoneRect.setAttribute('width', String(chartWidth));
+    zoneRect.setAttribute('height', String(yScale(zoneLimits.min) - yScale(zoneLimits.max)));
+    zoneRect.setAttribute('fill', 'url(#zoneGradient)');
+    svg.appendChild(zoneRect);
+
+    // Zone limit lines
+    const minZoneLine = document.createElementNS(svgNS, 'line');
+    minZoneLine.setAttribute('x1', String(margin.left));
+    minZoneLine.setAttribute('y1', String(yScale(zoneLimits.min)));
+    minZoneLine.setAttribute('x2', String(margin.left + chartWidth));
+    minZoneLine.setAttribute('y2', String(yScale(zoneLimits.min)));
+    minZoneLine.setAttribute('stroke', '#4caf50');
+    minZoneLine.setAttribute('stroke-width', '1');
+    minZoneLine.setAttribute('stroke-dasharray', '2,3');
+    svg.appendChild(minZoneLine);
+
+    const maxZoneLine = document.createElementNS(svgNS, 'line');
+    maxZoneLine.setAttribute('x1', String(margin.left));
+    maxZoneLine.setAttribute('y1', String(yScale(zoneLimits.max)));
+    maxZoneLine.setAttribute('x2', String(margin.left + chartWidth));
+    maxZoneLine.setAttribute('y2', String(yScale(zoneLimits.max)));
+    maxZoneLine.setAttribute('stroke', '#4caf50');
+    maxZoneLine.setAttribute('stroke-width', '1');
+    maxZoneLine.setAttribute('stroke-dasharray', '2,3');
+    svg.appendChild(maxZoneLine);
+
+    // BAC path
     let pathData = timeline.map((point, index) => {
         const x = xScale(point[0]);
         const y = yScale(point[1]);
         return (index === 0) ? `M ${x} ${y}` : ` L ${x} ${y}`;
-    }).join('');
+    }).join(' ');
 
+    const bacPath = document.createElementNS(svgNS, 'path');
+    bacPath.setAttribute('d', pathData);
+    bacPath.setAttribute('fill', 'none');
+    bacPath.setAttribute('stroke', '#4bc0c0');
+    bacPath.setAttribute('stroke-width', '2');
+    svg.appendChild(bacPath);
+
+    // "Now" line and circle
     const currentPoint = timeline.find(point => point[0] === 0);
     const currentX = currentPoint ? xScale(0) : margin.left;
     const currentY = currentPoint ? yScale(currentPoint[1]) : margin.top + chartHeight;
 
-    svg.innerHTML = `
-        <defs>
-            <linearGradient id="zoneGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" style="stop-color:rgba(76,175,80,0.2)" />
-                <stop offset="100%" style="stop-color:rgba(76,175,80,0.1)" />
-            </linearGradient>
-        </defs>
-        <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + chartHeight}" stroke="#eee" stroke-width="1"/>
-        <line x1="${margin.left}" y1="${margin.top + chartHeight}" x2="${margin.left + chartWidth}" y2="${margin.top + chartHeight}" stroke="#eee" stroke-width="1"/>
-        <rect x="${margin.left}" y="${yScale(zoneLimits.max)}" width="${chartWidth}" height="${yScale(zoneLimits.min) - yScale(zoneLimits.max)}" fill="url(#zoneGradient)" />
-        <line x1="${margin.left}" y1="${yScale(zoneLimits.min)}" x2="${margin.left + chartWidth}" y2="${yScale(zoneLimits.min)}" stroke="#4caf50" stroke-width="1" stroke-dasharray="2,3"/>
-        <line x1="${margin.left}" y1="${yScale(zoneLimits.max)}" x2="${margin.left + chartWidth}" y2="${yScale(zoneLimits.max)}" stroke="#4caf50" stroke-width="1" stroke-dasharray="2,3"/>
-        <path d="${pathData}" fill="none" stroke="#4bc0c0" stroke-width="2"/>
-        <line x1="${currentX}" y1="${margin.top}" x2="${currentX}" y2="${margin.top + chartHeight}" stroke="#ff6384" stroke-width="1" stroke-dasharray="4,4" />
-        <circle cx="${currentX}" cy="${currentY}" r="5" fill="#ff6384" stroke="#fff" stroke-width="1.5"/>
-        ${[0, 0.2, 0.4, 0.6, 0.8, 1.0].map(bac => `<text x="${margin.left - 8}" y="${yScale(bac) + 4}" text-anchor="end" fill="#666" font-size="12">${bac.toFixed(1)}</text>`).join('')}
-        ${[-180, -120, -60, 0, 60, 120, 180, 240, 300, 360].map(min => `<text x="${xScale(min)}" y="${margin.top + chartHeight + 20}" text-anchor="middle" fill="#666" font-size="12">${min === 0 ? 'Now' : min/60+'h'}</text>`).join('')}
-    `;
+    const nowLine = document.createElementNS(svgNS, 'line');
+    nowLine.setAttribute('x1', String(currentX));
+    nowLine.setAttribute('y1', String(margin.top));
+    nowLine.setAttribute('x2', String(currentX));
+    nowLine.setAttribute('y2', String(margin.top + chartHeight));
+    nowLine.setAttribute('stroke', '#ff6384');
+    nowLine.setAttribute('stroke-width', '1');
+    nowLine.setAttribute('stroke-dasharray', '4,4');
+    svg.appendChild(nowLine);
+
+    const nowCircle = document.createElementNS(svgNS, 'circle');
+    nowCircle.setAttribute('cx', String(currentX));
+    nowCircle.setAttribute('cy', String(currentY));
+    nowCircle.setAttribute('r', '5');
+    nowCircle.setAttribute('fill', '#ff6384');
+    nowCircle.setAttribute('stroke', '#fff');
+    nowCircle.setAttribute('stroke-width', '1.5');
+    svg.appendChild(nowCircle);
+
+    // Y-axis labels
+    [0, 0.2, 0.4, 0.6, 0.8, 1.0].forEach(bac => {
+        const text = document.createElementNS(svgNS, 'text');
+        text.setAttribute('x', String(margin.left - 8));
+        text.setAttribute('y', String(yScale(bac) + 4));
+        text.setAttribute('text-anchor', 'end');
+        text.setAttribute('fill', '#666');
+        text.setAttribute('font-size', '12');
+        text.textContent = bac.toFixed(1);
+        svg.appendChild(text);
+    });
+
+    // X-axis labels
+    [-180, -120, -60, 0, 60, 120, 180, 240, 300, 360].forEach(min => {
+        const text = document.createElementNS(svgNS, 'text');
+        text.setAttribute('x', String(xScale(min)));
+        text.setAttribute('y', String(margin.top + chartHeight + 20));
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('fill', '#666');
+        text.setAttribute('font-size', '12');
+        text.textContent = min === 0 ? 'Now' : min / 60 + 'h';
+        svg.appendChild(text);
+    });
+
     updateBACTimeline(timeline);
 }
 
@@ -170,17 +280,45 @@ function updateBACTimeline(timeline) {
     const tbody = document.getElementById('bac-timeline-body');
     if (!tbody) return;
     
-    let html = timeline
-        .filter(p => p[0] >= 0 && p[0] <= 120)
-        .filter((p, i) => i % 2 === 0) // Take every other point (20 min intervals)
-        .map(point => {
-            const bac = point[1];
-            const timeStr = point[0] === 0 ? 'NOW' : `${point[0]}min`;
-            return `<tr><td style="border: 1px solid #ccc; padding: 5px;">${timeStr}</td><td style="border: 1px solid #ccc; padding: 5px;">${bac.toFixed(3)}</td></tr>`;
-        })
-        .join('');
+    // Clear existing content safely
+    tbody.innerHTML = '';
 
-    tbody.innerHTML = html || `<tr><td colspan="2" style="text-align: center; padding: 10px;">No data</td></tr>`;
+    const filteredTimeline = timeline
+        .filter(p => p[0] >= 0 && p[0] <= 120)
+        .filter((p, i) => i % 2 === 0); // Take every other point (20 min intervals)
+
+    if (filteredTimeline.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 2;
+        td.textContent = 'No data';
+        td.style.textAlign = 'center';
+        td.style.padding = '10px';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+    }
+
+    filteredTimeline.forEach(point => {
+        const bac = point[1];
+        const timeStr = point[0] === 0 ? 'NOW' : `${point[0]}min`;
+
+        const tr = document.createElement('tr');
+
+        const timeCell = document.createElement('td');
+        timeCell.textContent = timeStr;
+        timeCell.style.border = '1px solid #ccc';
+        timeCell.style.padding = '5px';
+
+        const bacCell = document.createElement('td');
+        bacCell.textContent = bac.toFixed(3);
+        bacCell.style.border = '1px solid #ccc';
+        bacCell.style.padding = '5px';
+
+        tr.appendChild(timeCell);
+        tr.appendChild(bacCell);
+        tbody.appendChild(tr);
+    });
 }
 
 // === INITIALIZATION ===
