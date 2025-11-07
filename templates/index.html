@@ -2,7 +2,8 @@
 <html>
 <head>
     <title>Optihol</title>
-    <!-- Using simple SVG chart instead of Chart.js to avoid CSP issues -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.0.2/dist/chartjs-plugin-annotation.min.js"></script>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -22,51 +23,67 @@
     </div>
     
     <div>
-        <button onclick="addDrink()">🍺 Add Beer</button>
+        <button onclick="quickAddBeer()">⚡ Quick Add Beer</button>
+        <button onclick="openAddDrinkModal()">🍺 Add Drink</button>
         <button onclick="resetSession()">🔄 Reset</button>
         <button onclick="openSettings()">⚙️ Settings</button>
     </div>
     
-    <div id="next-drink">
-        Next Drink: <span id="next-drink-text">Ready to start</span>
+    <div id="chart-container" style="width: 80%; max-width: 900px; margin: auto;">
+        <canvas id="bacChart"></canvas>
     </div>
-    
-    <div id="chart-container">
-        <svg id="bac-chart" width="100%" height="400" viewBox="0 0 800 400">
-            <defs>
-                <linearGradient id="zoneGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" style="stop-color:rgba(76,175,80,0.2);stop-opacity:1" />
-                    <stop offset="100%" style="stop-color:rgba(76,175,80,0.1);stop-opacity:1" />
-                </linearGradient>
-            </defs>
-            <!-- Grid lines will be added here -->
-            <!-- BAC curve will be added here -->
-            <!-- Optimal zone will be added here -->
-            <text x="400" y="200" text-anchor="middle" fill="#999" font-family="Arial" font-size="16">
-                Loading BAC chart...
-            </text>
-        </svg>
-    </div>
-    
-    
-    <div id="info">
-        Drinks: <span id="drink-count">0</span><br>
-        Zone: <span id="zone-display">0.5‰ - 0.7‰</span><br>
-    </div>
-    
+
     <div style="margin: 20px auto; max-width: 400px; font-family: monospace; font-size: 14px;">
-        <h3>BAC Timeline</h3>
-        <table id="bac-timeline" style="width: 100%; border-collapse: collapse;">
+        <table id="drinks-log" style="width: 100%; border-collapse: collapse;">
+            <caption id="drinks-log-caption" style="caption-side: top; text-align: left; padding: 5px; font-weight: bold;"></caption>
             <thead>
                 <tr style="background: #ddd;">
                     <th style="border: 1px solid #ccc; padding: 5px;">Time</th>
-                    <th style="border: 1px solid #ccc; padding: 5px;">BAC (‰)</th>
+                    <th style="border: 1px solid #ccc; padding: 5px;">Drink Type</th>
+                    <th style="border: 1px solid #ccc; padding: 5px;">Size</th>
                 </tr>
             </thead>
-            <tbody id="bac-timeline-body">
+            <tbody id="drinks-log-body">
                 <tr><td colspan="2" style="text-align: center; padding: 10px;">No data</td></tr>
             </tbody>
         </table>
+    </div>
+    
+    <div id="info">
+        Optimal Zone: <span id="zone-display">0.5‰ - 0.7‰</span><br>
+    </div>
+
+    <!-- Add Drink Modal -->
+    <div id="addDrinkModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeAddDrinkModal()">&times;</span>
+            <h2>Add a Drink</h2>
+            <form id="addDrinkForm">
+                <div class="form-group">
+                    <label for="drinkType">Drink Type:</label>
+                    <select id="drinkType" name="drinkType">
+                        <option value="Beer">Beer</option>
+                        <option value="Wine">Wine</option>
+                        <option value="Spirits">Spirits</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group" id="drinkSizeContainer" style="display: none;">
+                    <label for="drinkSize">Size:</label>
+                    <select id="drinkSize" name="drinkSize">
+                        <!-- Options will be populated dynamically by JavaScript -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Time:</label>
+                    <input type="radio" id="timeNow" name="drinkTime" value="0" checked> <label for="timeNow">Now</label><br>
+                    <input type="radio" id="time15" name="drinkTime" value="15"> <label for="time15">15 min ago</label><br>
+                    <input type="radio" id="time30" name="drinkTime" value="30"> <label for="time30">30 min ago</label><br>
+                    <input type="radio" id="time60" name="drinkTime" value="60"> <label for="time60">1 hour ago</label><br>
+                </div>
+                <button type="submit">Add</button>
+            </form>
+        </div>
     </div>
 
     <!-- Settings Modal -->
@@ -99,6 +116,8 @@
         </div>
     </div>
 
+    <script src="/static/database.js" defer></script>
+    <script src="/static/chart.js" defer></script>
     <script src="/static/script.js" defer></script>
 </body>
 </html>

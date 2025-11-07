@@ -10,8 +10,10 @@ class UserInfo(BaseModel):
 
 class Drink(BaseModel):
     """Defines the schema for a single drink event."""
+    drinkType: str | None = None # Making it optional for now
     alcohol_grams: float = Field(..., gt=0, description="Alcohol content in grams, must be positive")
     timestamp: str # ISO 8601 format string
+    size: str | None = None # Add size field
 
 class CalculationPayload(BaseModel):
     """Defines the schema for the main API request body."""

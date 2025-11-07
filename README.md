@@ -1,6 +1,6 @@
 # Optihol
 
-Optihol is a web application designed to help users track and predict their Blood Alcohol Content (BAC). The primary goal is to enable users to maintain a specific BAC range, not for harm reduction, but for achieving optimal performance in certain tasks that may be enhanced by a specific, low level of alcohol.
+Optihol is a web application designed to help users track and predict their Blood Alcohol Content (BAC). The primary goal is to enable users to maintain a specific BAC range, not for harm reduction, but for achieving optimal performance in certain tasks that may be enhanced by a specific, low level of alcohol. All user data is stored privately and securely on the user's own device using modern browser storage technologies to ensure privacy and a persistent, seamless experience, featuring an interactive BAC chart for visualization and an improved drink addition interface with size selection.
 
 ## How to Run the Project
 

@@ -42,7 +42,7 @@ class BACService:
         peak_bac = absorption_info['peak_bac']
         status = calc.get_zone_status(bac)
         next_drink = calc.find_next_drink_time(now=now)
-        timeline = calc.get_bac_timeline(minutes_ahead=360, minutes_back=180, interval=10, now=now)
+        timeline = calc.get_bac_timeline(minutes_ahead=180, minutes_back=180, interval=10, now=now)
         zone_limits = calc.get_zone_limits()
 
         # Format and return the final report
@@ -54,5 +54,6 @@ class BACService:
             'drink_count': len(calc.drinks),
             'next_drink': next_drink,
             'timeline': timeline,
-            'zone_limits': zone_limits
+            'zone_limits': zone_limits,
+            'drinks': [drink.dict() for drink in self.payload.drinks] # Convert Pydantic models to dicts
         }
