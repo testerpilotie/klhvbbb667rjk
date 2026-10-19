@@ -1,0 +1,11 @@
+{
+  "name": "optihol",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Installable BAC tracker that keeps you in your target zone. Static PWA, no backend.",
+  "scripts": {
+    "test": "node --test",
+    "start": "python -m http.server 8080 --directory public"
+  }
+}

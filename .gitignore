@@ -1,3 +1,6 @@
-.private/
+node_modules/
+.DS_Store
+*.sock
 __pycache__/
 venv/
+.env

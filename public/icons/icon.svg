@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0c0f14"/>
+  <g fill="none" stroke-width="44" stroke-linecap="round" transform="translate(256 256)">
+    <!-- 270° gauge from 135° to 405°; radius 132 (centre of stroke) -->
+    <path d="M -93.3 93.3 A 132 132 0 1 1 93.3 93.3" stroke="#242b36"/>
+    <path d="M -93.3 93.3 A 132 132 0 1 1 100.3 -85.8" stroke="#5ee6b0"/>
+  </g>
+  <circle cx="378.4" cy="206.6" r="14" fill="#ffbe5c"/>
+  <circle cx="256" cy="256" r="38" fill="#f0f2f5"/>
+</svg>

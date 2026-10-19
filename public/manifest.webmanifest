@@ -1,0 +1,87 @@
+{
+  "name": "Optihol",
+  "short_name": "Optihol",
+  "description": "Real-time BAC estimate and drink pacing. Private by design.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c0f14",
+  "theme_color": "#0c0f14",
+  "categories": [
+    "health",
+    "lifestyle",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "id": "./",
+  "shortcuts": [
+    {
+      "name": "Log a beer",
+      "short_name": "Beer",
+      "description": "Log a 0.5 l beer now",
+      "url": "./?log=pint",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Log a long drink",
+      "short_name": "Long drink",
+      "url": "./?log=long",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Log a glass of wine",
+      "short_name": "Wine",
+      "url": "./?log=wine12",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Log water",
+      "short_name": "Water",
+      "url": "./?log=water",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
