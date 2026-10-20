@@ -99,3 +99,42 @@ drink or water, and whether the check-in nudge (a pulse after 45 min) helps or a
 - **Night reveal**: the next time you open the app, a "Last night" card shows the score, new badges and tier-ups, plus the morning rating. Opening the recap animates the ring and pops the badges, and shows your personal best and average.
 - **Trophies**: tiered badges with progress bars and how to earn each one, plus "Next up" (the closest tier-ups) and the week streak and goal weeks.
 - New: 🌙 Called it, 🗓️ Goal week, 🌿 Dry week. Removed: Early night (it was trivial).
+
+---
+
+# First open, first night, first habit (v2.7)
+
+## Audit: a brand-new user today (measured)
+
+| Moment | Today | Problem |
+|---|---|---|
+| Welcome | 103 words, 2 separate checkboxes | Slow, and nothing to see yet |
+| Zone | "Mellow 0.30–0.50 ‰" | Abstract: nobody new knows what 0.5 ‰ means in drinks |
+| First Now screen | 8 actions in: a 0.00 gauge and one personal line ("a beer peaks at 0.23 ‰") | The aha needs you to be drinking. Most first opens happen at home, so the aha is postponed to some unknown evening |
+| Between sessions | Nothing invites you back | No plan, no calendar, no trigger. Return depends on chance |
+| Nights 1–3 | Calibration, feel zone and sweet spot unlock silently | The reward for sticking with it is never promised, so there's no reason to invest |
+
+## The journey we design for (Hook model: trigger → action → reward → investment)
+
+1. **Open → aha in under a minute, without drinking.** One consent tap, the profile, then a zone chosen in *drinks* ("≈ 2 beers to get there"). The first screen is the answer to the question everyone actually has: **"how much, and when?"**
+2. **Plan tonight.** A planner turns your zone into a schedule: *20:00 beer, 20:50 beer, 22:05 beer → peak 0.62 ‰, sober by 03:40*. It's useful on day 0 and is itself the aha.
+3. **A bridge to session 2.** "Add to calendar" puts the plan in your calendar with a link back, which is an external trigger with no server or push needed. On the night itself the plan card says "starts in 20 min · Start now".
+4. **Three nights to know you.** A short checklist with *endowed progress* (profile already ✓), where every step promises what it unlocks: plan a night → your schedule; first night → your score; rate the morning → your sweet spot; tap 🎯 → your real zone; add to home screen → one tap away. Investing makes the app more personal, which is the reason to keep going.
+5. **Welcome back.** After a few days away: "Welcome back 👋 — 4 alcohol-free days since your last night." The return is recognised and rewarded, never guilted.
+
+Ethics: the planner never schedules a drink that would overshoot your zone, shows the cautious sober time and the "never drive" line, and caps out at 8 drinks.
+
+## Result (measured on a fresh profile, same method as the audit)
+
+| | v2.6 | v2.7 |
+|---|---|---|
+| Words on the welcome screen | 103 | 65 |
+| Actions to the first real screen | 8 | 7 (one consent tap; the cursor lands in Weight) |
+| Zone choice | "0.30–0.50 ‰" | "≈ 2 beers / 3 h" per preset, plus "For you, 2 beers get you there, then one every ~2 h 20 min keeps you there" |
+| Something to do without drinking | Nothing | Plan a night: schedule, curve, likely and cautious sober time |
+| Bridge to session 2 | None | Saved plan card on Now + "Add to calendar" (.ics with alarm and link) |
+| Sessions 2–4 | Unlocks hidden | Getting-to-know-you checklist (6 steps, profile pre-ticked), each step names its reward. Disappears after 4 nights |
+| Return after days away | Silent | "Welcome back 👋 5 alcohol-free days since you were last here" |
+
+Not measurable without analytics, which we deliberately don't collect: actual day-1, day-7 and day-30 return rates.
+The next learning step is five people, one evening each, watched or interviewed the morning after.

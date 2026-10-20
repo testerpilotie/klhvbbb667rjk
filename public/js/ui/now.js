@@ -10,6 +10,7 @@ import { FEELS, feelZone } from '../feel.js';
 import * as Sc from '../score.js';
 import { FOOD_LABELS, ICONS, STATUS_TEXT, plural, ratingButtons, scoreRing, timelineRows } from './common.js';
 import { nightCard } from './history.js';
+import { recipeSentence, recipesFor } from './recipe.js';
 
 const { MINUTE } = M;
 
@@ -23,13 +24,25 @@ function dropsBelowAt(cv, threshold) {
 
 export function nowView(ctx) {
   const { d } = ctx;
+  if (d.active) {
+    // At the bar, the gauge comes first.
+    return hero(ctx) + checkinRow(ctx) + tonightCard(ctx) + drinksCard(ctx) + disclaimer();
+  }
+  const fresh = !d.sessions.length;
   return (
-    (d.active ? '' : lastNightCard(ctx)) + // at the bar, the gauge comes first
-    hero(ctx) +
-    (d.active ? checkinRow(ctx) + tonightCard(ctx) + drinksCard(ctx) : weekCard(ctx) + idleBlocks(ctx)) +
-    installCard(ctx) +
-    `<p class="disclaimer">Estimates only — real BAC varies person to person. Never use Optihol to decide whether you can drive.</p>`
+    lastNightCard(ctx) +
+    planCard(ctx) +
+    // Brand new: the checklist (with your zone in drinks) comes before an empty gauge.
+    (fresh ? journeyCard(ctx) + hero(ctx) : hero(ctx) + journeyCard(ctx)) +
+    (fresh ? '' : weekCard(ctx)) +
+    idleBlocks(ctx) +
+    (d.journey ? '' : installCard(ctx)) +
+    disclaimer()
   );
+}
+
+function disclaimer() {
+  return `<p class="disclaimer">Estimates only — real BAC varies person to person. Never use Optihol to decide whether you can drive.</p>`;
 }
 
 // ----- Hero: gauge + one-sentence verdict ---------------------------------------------------
@@ -194,14 +207,58 @@ function drinksCard({ d, ui }) {
 function idleBlocks({ state, d }) {
   const last = d.sessions.at(-1);
   if (!last) {
-    return `<section class="card"><div class="card-title">How it works</div><div class="prose">
-      <p><b>Tap a drink in the bar below</b> when you start it. ＋ has everything else, including drinks you forgot to log.</p>
-      <p><b>Watch the gauge.</b> The green arc is your zone.</p>
-      <p><b>Follow the next-drink time.</b> It keeps your usual drink from pushing you over.</p>
+    return `<section class="card"><div class="card-title">On the night</div><div class="prose">
+      <p><b>Tap a drink in the bar below</b> as you start it. ＋ has everything else, including ones you forgot.</p>
+      <p><b>Follow the next-drink time</b> under the gauge. It never pushes you past your zone.</p>
     </div></section>`;
   }
   return `<h2 class="list-title">Last night out</h2>
     ${nightCard(d.nightOf(last), d, state.settings.unit, state.settings.standardGrams)}`;
+}
+
+/** First nights: a short checklist where every step says what it unlocks. */
+function journeyCard({ state, d }) {
+  const j = d.journey;
+  if (!j) return '';
+  const zone = { min: state.settings.zoneMin, max: state.settings.zoneMax };
+  const recipe = !d.sessions.length
+    ? `<div class="recipe">${ICONS.check}<p>${recipeSentence(recipesFor(state.profile, zone)[`${zone.min}-${zone.max}`])}</p></div>`
+    : '';
+  const rows = j.steps
+    .map((st) => {
+      const isNext = st === j.next;
+      const button = isNext && st.action ? `<button class="btn ${st.primary ? 'btn-primary' : 'btn-ghost'} btn-sm" data-action="${st.action}">${st.cta}</button>` : '';
+      return `<li class="${st.done ? 'done' : isNext ? 'next' : 'todo'}"><span class="j-dot">${st.done ? '✓' : ''}</span>
+        <div class="j-text"><b>${st.label}</b><small>${st.done ? 'Done' : isNext && st.hint ? st.hint : `Unlocks ${st.unlock}`}</small></div>${button}</li>`;
+    })
+    .join('');
+  return `<section class="card journey">
+    <div class="card-title">${j.complete ? 'You’re all set' : 'Getting to know you'} <small>${j.done} of ${j.total}</small></div>
+    <div class="j-bar"><i style="width:${((j.done / j.total) * 100).toFixed(0)}%"></i></div>
+    ${recipe}
+    <ol class="j-steps">${rows}</ol>
+    <div class="j-foot">${j.complete ? '<button class="btn btn-primary btn-sm" data-action="journey-hide">Nice</button>' : '<button class="link" data-action="journey-hide">Hide this</button>'}</div>
+  </section>`;
+}
+
+/** A planned night, from planning until you start drinking. */
+function planCard({ state, d }) {
+  const p = d.upcomingPlan;
+  if (!p) return '';
+  const soon = d.now >= p.start - 60 * MINUTE;
+  const when = p.start > d.now ? `starts ${F.relative(p.start, d.now)}` : 'ready when you are';
+  return `<section class="card plan-card">
+    <div class="card-title">Your plan <small>${when}</small></div>
+    <div class="plan-times">${p.schedule
+      .map((t, i) => `<span class="${i === 0 && soon ? 'now' : ''}">${iconSvg(p.icon, 18)}<b>${F.time(t)}</b></span>`)
+      .join('<i></i>')}</div>
+    <p class="hint" style="margin:0">${plural(p.schedule.length, F.esc(p.name), F.esc(p.name) + 's')} · peak ${F.bac(p.peak, state.settings.unit)} · ${p.soberLikely ? `sober around ${F.time(p.soberLikely)} (cautious ${F.time(p.soberAt)})` : `sober by ${F.time(p.soberAt)} (cautious)`}</p>
+    <div class="guide-actions">
+      ${soon ? `<button class="btn btn-primary btn-grow" data-action="plan-go">${iconSvg(p.icon, 18)}Start: log the first</button>` : ''}
+      <button class="btn btn-ghost ${soon ? '' : 'btn-grow'}" data-action="plan">Edit</button>
+      <button class="btn btn-ghost" data-action="plan-clear">Clear</button>
+    </div>
+  </section>`;
 }
 
 /** Badges you can still earn tonight — only for good behaviour. */

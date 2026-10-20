@@ -5,6 +5,7 @@ import * as Sc from '../score.js';
 import * as Fe from '../feel.js';
 import { ICONS, drinkName, plural, ratingButtons, scoreRing, stat, timelineRows } from './common.js';
 import { sparkline } from './history.js';
+import { MAX_PLANNED, planNight } from '../plan.js';
 
 const { MINUTE, HOUR } = M;
 const WHEN = [0, 10, 20, 30, 45, 60, 90, 120];
@@ -13,7 +14,7 @@ const head = (title) =>
   `<div class="sheet-head"><h2>${title}</h2><button class="icon-btn" data-action="close-sheet" aria-label="Close">${ICONS.close}</button></div>`;
 
 export function sheetTitle(type) {
-  return { add: 'Add drink', custom: 'Custom drink', edit: 'Edit drink', reading: 'Breathalyzer reading', night: 'Night recap' }[type];
+  return { add: 'Add drink', custom: 'Custom drink', edit: 'Edit drink', reading: 'Breathalyzer reading', night: 'Night recap', plan: 'Plan a night' }[type];
 }
 
 export function sheetView(sheet, ctx) {
@@ -21,6 +22,7 @@ export function sheetView(sheet, ctx) {
   if (sheet.type === 'custom') return customSheet(sheet);
   if (sheet.type === 'edit') return editSheet(sheet, ctx);
   if (sheet.type === 'night') return nightSheet(sheet, ctx);
+  if (sheet.type === 'plan') return planSheet(sheet, ctx);
   return readingSheet(sheet, ctx);
 }
 
@@ -190,4 +192,67 @@ function nightSheet(sheet, { state, d, ui }) {
     <div class="label">${plural(st.drinkCount, 'drink', 'drinks')}${n.water ? ` · ${plural(n.water, 'water', 'waters')}` : ''}</div>
     <div class="list">${drinks}</div>
     <button class="btn btn-primary btn-block" style="margin-top:18px" data-action="share" data-id="${n.id}">${ICONS.share}Share recap</button>`;
+}
+
+/** Start-time choices: now, then the next five whole hours (never earlier than 17:00). */
+export function planStarts(now) {
+  const out = [now];
+  const d = new Date(now);
+  d.setMinutes(0, 0, 0);
+  d.setHours(d.getHours() + 1);
+  if (d.getHours() < 17 && d.getHours() > 4) d.setHours(17);
+  for (let i = 0; i < 5; i++) {
+    out.push(d.getTime());
+    d.setHours(d.getHours() + 1);
+  }
+  return out;
+}
+
+export function planFor(sheet, { d, catalogue }) {
+  const item = catalogue.find((c) => c.id === sheet.itemId) || catalogue[0];
+  const start = planStarts(d.now)[sheet.startIndex] ?? d.now;
+  const ref = { grams: M.gramsOf(item.volumeMl, item.abv), food: 'empty', sipMin: sipMinutesFor(item) };
+  return { item, start, plan: planNight(d.body, d.zone, ref, start, sheet.count) };
+}
+
+function planSheet(sheet, ctx) {
+  const { state, d, catalogue } = ctx;
+  const unit = state.settings.unit;
+  const { item, start, plan } = planFor(sheet, ctx);
+  const starts = planStarts(d.now)
+    .map((t, i) => `<button data-action="plan-start" data-value="${i}" aria-pressed="${sheet.startIndex === i}">${i === 0 ? 'Now' : F.time(t)}</button>`)
+    .join('');
+  const items = catalogue
+    .map((c) => `<button class="mini-tile" data-action="plan-item" data-id="${c.id}" aria-pressed="${c.id === item.id}">${iconSvg(c.icon, 20)}<span>${F.esc(c.name)}</span></button>`)
+    .join('');
+  let result;
+  if (plan.tooBig) {
+    result = `<div class="preview st-above"><div>${F.esc(item.name)} alone would take you to about ${F.bac(plan.peak, unit)}, over your zone. Pick something lighter.</div></div>`;
+  } else {
+    const rows = plan.schedule
+      .map((t, i) => `<li><span class="p-n">${i + 1}</span><b>${F.time(t)}</b><span>${F.esc(item.name)}</span>${i && t - plan.schedule[i - 1] > 60 * MINUTE ? `<small>wait ${F.duration(t - plan.schedule[i - 1])}</small>` : ''}</li>`)
+      .join('');
+    const zoneLine = plan.zoneFrom
+      ? `In your zone <b>${F.time(plan.zoneFrom)}–${F.time(plan.zoneUntil)}</b>`
+      : 'This stays under your zone';
+    result = `<ol class="plan-list">${rows}</ol>
+      <div class="recap-chart">${sparkline(plan.curve, d.zone, 'st-zone', { height: 80, hours: true })}</div>
+      <p class="plan-sum">${zoneLine} · peak ${F.bac(plan.peak, unit)} · sober around <b>${F.time(plan.soberLikely)}</b> <small>(cautious ${F.time(plan.soberAt)})</small></p>`;
+  }
+  const isNow = sheet.startIndex === 0;
+  const actions = plan.tooBig || !plan.schedule?.length
+    ? ''
+    : isNow
+      ? `<button class="btn btn-primary btn-block" data-action="plan-go">${iconSvg(item.icon, 20)}Log the first one now</button>`
+      : `<div class="guide-actions"><button class="btn btn-ghost btn-grow" data-action="plan-ics">${ICONS.clock}Add to calendar</button><button class="btn btn-primary btn-grow" data-action="plan-save">Save plan</button></div>`;
+  return `${head('Plan a night')}
+    <div class="label" style="margin-top:0">Start</div>
+    <div class="chips">${starts}</div>
+    <div class="label">Drink</div>
+    <div class="mini-tiles">${items}</div>
+    <div class="label">How many</div>
+    <div class="stepper" style="max-width:200px"><button data-action="plan-count" data-dir="-1" aria-label="Fewer">−</button><output>${sheet.count}</output><button data-action="plan-count" data-dir="1" aria-label="More" ${sheet.count >= MAX_PLANNED ? 'disabled' : ''}>+</button></div>
+    ${result}
+    <div style="margin-top:16px">${actions}</div>
+    <p class="hint" style="text-align:center">Paced so you never go over your zone. Plans are estimates — never drive after drinking.</p>`;
 }

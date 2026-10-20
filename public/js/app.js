@@ -11,7 +11,9 @@ import { dockView, nowView } from './ui/now.js';
 import { historyView } from './ui/history.js';
 import { settingsView } from './ui/settings.js';
 import { onboardingView, profileValid } from './ui/onboarding.js';
-import { customValid, gramsHint, sheetTitle, sheetView } from './ui/sheets.js';
+import { customValid, gramsHint, planFor, sheetTitle, sheetView } from './ui/sheets.js';
+import { recipesFor } from './ui/recipe.js';
+import { toIcs } from './plan.js';
 
 const { MINUTE, HOUR } = M;
 const app = document.getElementById('app');
@@ -173,6 +175,8 @@ function derive(state, now = Date.now()) {
     feels: cache.feels,
     morning: morningCandidate(state, sessions, active, now, nightOf),
     reveal: revealCandidate(sessions, active, now, nightOf),
+    journey: journeyState(state, sessions, cache.feels),
+    upcomingPlan: !active && state.plan && state.plan.start > now - 2 * HOUR && state.plan.start < now + 36 * HOUR ? state.plan : null,
     live: active ? liveGoalsFor(state, nightOf(active), sessionWater.length) : null,
   };
 }
@@ -196,6 +200,24 @@ function morningCandidate(state, sessions, active, now, nightOf) {
   if (!asked || now - last.soberAt > 36 * HOUR) return null;
   const night = nightOf(last);
   return night.stats.peak >= 0.2 ? night : null; // a single light drink isn't worth asking about
+}
+
+/** The first-nights checklist. Disappears once dismissed or after four nights. */
+function journeyState(state, sessions, feels) {
+  if (state.journey.dismissed || sessions.length >= 4) return null;
+  const rated = Object.values(state.nights).some((n) => n.rating);
+  const homeHint = install.ios ? 'Safari: Share → Add to Home Screen' : 'Browser menu → Install app';
+  const steps = [
+    { id: 'profile', label: 'Set up your profile', unlock: 'pacing for your body', done: true },
+    { id: 'plan', label: 'Plan a night', unlock: 'your drink-by-drink schedule', done: state.journey.planned, action: 'plan', cta: 'Plan one', primary: true },
+    { id: 'home', label: 'Put Optihol on your home screen', unlock: 'one tap at the bar, works offline', done: install.standalone || state.journey.installed,
+      action: install.prompt ? 'install' : 'home-done', cta: install.prompt ? 'Install' : 'I did it', hint: install.prompt ? '' : homeHint },
+    { id: 'night', label: 'Log your first night', unlock: 'live pacing and your zone score', done: sessions.length > 0, action: 'add', cta: 'Log a drink' },
+    { id: 'feel', label: 'Tap 🎯 when it feels just right', unlock: 'where your zone really is', done: feels.some((f) => f.feel === 'zone'), hint: 'During a night, right under the gauge' },
+    { id: 'morning', label: 'Rate the morning after', unlock: 'your sweet spot', done: rated, hint: 'The day after a night out' },
+  ];
+  const done = steps.filter((x) => x.done).length;
+  return { steps, done, total: steps.length, next: steps.find((x) => !x.done) ?? null, complete: done === steps.length };
 }
 
 /** Weekly goals, streak and badge counts (night badges + weekly achievements). */
@@ -305,8 +327,7 @@ function renderOnboarding(state) {
   if (!ui.ob) {
     ui.ob = {
       step: 0,
-      age18: false,
-      estimates: false,
+      consent: false,
       profile: state.profile ? { ...state.profile } : { sex: 'male', weightKg: '', heightCm: '', age: '' },
       zoneMin: state.settings.zoneMin,
       zoneMax: state.settings.zoneMax,
@@ -587,6 +608,28 @@ const actions = {
     toast('Calibration reset');
   },
   'toggle-reminder': toggleReminders,
+  plan() {
+    const state = S.getState();
+    const d = derive(state);
+    const hour = new Date(d.now).getHours();
+    const r = recipesFor(state.profile, d.zone)[`${d.zone.min}-${d.zone.max}`];
+    const existing = state.plan && state.plan.start > d.now - HOUR ? state.plan : null;
+    openSheet({
+      type: 'plan',
+      startIndex: existing ? 0 : hour >= 17 || hour < 3 ? 0 : 2,
+      itemId: existing?.itemId ?? refDrink(state).id ?? 'pint',
+      count: existing?.count ?? Math.min(6, Math.max(2, (r?.toReach ?? 2) + 1)),
+    });
+  },
+  'plan-go'() {
+    const state = S.getState();
+    const p = state.plan;
+    const item = p && catalogue(state).find((c) => c.id === p.itemId);
+    if (item) logDrink(item);
+  },
+  'plan-clear': () => S.update((s) => (s.plan = null)),
+  'home-done': () => S.update((s) => (s.journey.installed = true)),
+  'journey-hide': () => S.update((s) => (s.journey.dismissed = true)),
   night(el) {
     const id = el.dataset.id;
     const night = derive(S.getState()).nights().find((n) => n.id === id);
@@ -705,6 +748,7 @@ const actions = {
     ui.ob.step++;
     render();
     scrollTo({ top: 0 });
+    if (ui.ob.step === 1 && !ui.ob.profile.weightKg) document.getElementById('f-weightKg')?.focus();
   },
   'ob-back'() {
     ui.ob.step--;
@@ -728,8 +772,65 @@ const actions = {
   },
 };
 
+/** Store the plan from the planner sheet; returns it. */
+function savePlan() {
+  const state = S.getState();
+  const c = ctx(state);
+  const { item, plan } = planFor(ui.sheet, c);
+  if (plan.tooBig || !plan.schedule.length) return null;
+  const saved = { start: plan.schedule[0], itemId: item.id, name: item.name, icon: item.icon, count: ui.sheet.count, schedule: plan.schedule, peak: plan.peak, soberLikely: plan.soberLikely, soberAt: plan.soberAt };
+  S.update((s) => {
+    s.plan = saved;
+    s.journey.planned = true;
+  });
+  return saved;
+}
+
 const sheetActions = {
   'close-sheet': closeSheet,
+  'plan-start'(el) {
+    ui.sheet.startIndex = Number(el.dataset.value);
+    renderSheet();
+  },
+  'plan-item'(el) {
+    ui.sheet.itemId = el.dataset.id;
+    renderSheet();
+  },
+  'plan-count'(el) {
+    ui.sheet.count = Math.min(8, Math.max(1, ui.sheet.count + Number(el.dataset.dir)));
+    renderSheet();
+  },
+  'plan-save'() {
+    const p = savePlan();
+    closeSheet();
+    if (p) toast(`Plan saved — first ${p.name} at ${F.time(p.start)}`);
+  },
+  'plan-ics'() {
+    const p = savePlan();
+    if (!p) return;
+    const lines = p.schedule.map((t) => `${F.time(t)}  ${p.name}`).join('\n');
+    const ics = toIcs({
+      start: p.start,
+      end: p.soberAt,
+      title: 'Night out — your Optihol plan',
+      description: `${lines}\n\nPeak ${F.bac(p.peak, S.getState().settings.unit)}. Open Optihol to pace it: https://optihol.com/`,
+      url: 'https://optihol.com/',
+      uid: S.uid(),
+    });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+    a.download = 'optihol-plan.ics';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    closeSheet();
+    toast('Added — open the file to put it in your calendar');
+  },
+  'plan-go'() {
+    const p = savePlan();
+    closeSheet();
+    const item = p && catalogue(S.getState()).find((c) => c.id === p.itemId);
+    if (item) logDrink(item);
+  },
   rate: (el) => actions.rate(el),
   'delete-feel': (el) => actions['delete-feel'](el),
   badge: (el) => actions.badge(el),
@@ -860,7 +961,7 @@ app.addEventListener('input', (e) => {
   const t = e.target;
   if (t.dataset.ob) {
     ui.ob[t.dataset.ob] = t.checked;
-    app.querySelector('[data-action="ob-next"]').disabled = !(ui.ob.age18 && ui.ob.estimates);
+    app.querySelector('[data-action="ob-next"]').disabled = !ui.ob.consent;
     return;
   }
   if (!t.dataset.field) return;
@@ -922,6 +1023,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 window.addEventListener('appinstalled', () => {
   install.prompt = null;
   install.standalone = true;
+  S.update((s) => (s.journey.installed = true));
 });
 
 S.subscribe(() => render());
@@ -947,6 +1049,22 @@ function handleDeepLink() {
   if (item) logDrink(item);
 }
 
+/** Coming back after a few days away is worth a hello — never a guilt trip. */
+function welcomeBack() {
+  const state = S.getState();
+  const now = Date.now();
+  const last = state.lastSeen;
+  if (state.profile && state.acceptedAt) {
+    const d = derive(state, now);
+    const away = last ? Math.floor((now - last) / (24 * HOUR)) : 0;
+    if (away >= 2 && !d.active) {
+      const free = Sc.alcoholFreeDays(d.sessions.map((s) => ({ start: s.start })), now, Math.min(away, 14));
+      setTimeout(() => toast(free >= 2 ? `Welcome back 👋 ${free} alcohol-free days since you were last here` : 'Welcome back 👋'), 600);
+    }
+  }
+  if (!last || now - last > HOUR) S.update((s) => (s.lastSeen = now));
+}
+
 // Boot.
 {
   const st = S.getState();
@@ -954,6 +1072,7 @@ function handleDeepLink() {
 }
 render();
 handleDeepLink();
+welcomeBack();
 S.migrateFromV1().then((migrated) => {
   if (migrated) toast('Imported your data from the previous Optihol');
 });

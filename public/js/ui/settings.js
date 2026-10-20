@@ -1,6 +1,7 @@
 import * as F from '../format.js';
 import { describe, iconSvg } from '../drinks.js';
 import { ICONS, LIMITS, STANDARDS, ZONE_PRESETS, numberField, plural, seg } from './common.js';
+import { recipeSentence, recipesFor } from './recipe.js';
 
 export function profileFields(p) {
   return `<div class="field full"><span class="lbl">Sex</span>${seg('profile-sex', 'sex', p.sex, [['male', 'Male'], ['female', 'Female']])}</div>
@@ -9,17 +10,23 @@ export function profileFields(p) {
     ${numberField('age', 'Age', p.age, 'years', 'min="18" max="110" step="1"')}`;
 }
 
-export function zoneFields(min, max, unit) {
+export function zoneFields(min, max, unit, recipes = null, { compact = false, steppersOnly = false } = {}) {
   const stepper = (key, label, value) => `<div class="field"><span class="lbl">${label}</span><div class="stepper">
     <button data-action="zone-step" data-key="${key}" data-dir="-1" aria-label="Lower ${label}">−</button>
     <output>${F.bacNumber(value, unit)}</output>
     <button data-action="zone-step" data-key="${key}" data-dir="1" aria-label="Raise ${label}">+</button></div></div>`;
+  const steppers = `${stepper('zoneMin', `From (${F.unitLabel(unit)})`, min)}
+    ${stepper('zoneMax', `To (${F.unitLabel(unit)})`, max)}`;
+  if (steppersOnly) return steppers;
+  const drinks = (z) => {
+    const r = recipes?.[`${z.min}-${z.max}`];
+    return r ? `<em>${r.in3h ? `≈ ${plural(r.in3h, 'beer', 'beers')}` : '< 1 beer'}<small> / 3 h</small></em>` : '';
+  };
   return `<div class="presets full">${ZONE_PRESETS.map(
     (z) => `<button class="preset" data-action="zone-preset" data-min="${z.min}" data-max="${z.max}" aria-pressed="${z.min === min && z.max === max}">
-      <b>${z.name}</b><span>${F.bacNumber(z.min, unit)}–${F.bacNumber(z.max, unit)}</span></button>`,
+      <b>${z.name}</b>${drinks(z)}<span>${F.bacNumber(z.min, unit)}–${F.bacNumber(z.max, unit)}</span></button>`,
   ).join('')}</div>
-    ${stepper('zoneMin', `From (${F.unitLabel(unit)})`, min)}
-    ${stepper('zoneMax', `To (${F.unitLabel(unit)})`, max)}`;
+    ${compact ? '' : steppers}`;
 }
 
 export function limitSelect(current, unit) {
@@ -56,7 +63,8 @@ export function settingsView({ state, d, reminders }) {
 
     <div class="group-title">Your zone</div>
     <section class="group"><div class="group-body form-grid" data-scope="settings">
-      ${zoneFields(s.zoneMin, s.zoneMax, s.unit)}
+      ${zoneFields(s.zoneMin, s.zoneMax, s.unit, recipesFor(state.profile))}
+      <p class="hint full" style="margin:0">${recipeSentence(recipesFor(state.profile, { min: s.zoneMin, max: s.zoneMax })[`${s.zoneMin}-${s.zoneMax}`])}</p>
       <div class="field full"><span class="lbl">Driving limit line</span>${limitSelect(s.drivingLimit, s.unit)}</div>
     </div></section>
 

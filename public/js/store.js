@@ -46,6 +46,9 @@ function blank() {
     celebrated: [], // first-drink ids of sessions that already got the "in the zone" moment
     doneUntil: null,
     installDismissed: false,
+    journey: { planned: false, installed: false, dismissed: false }, // first-nights checklist
+    plan: null, // a planned night: { start, itemId, name, icon, count, schedule, peak, soberAt }
+    lastSeen: null,
   };
 }
 
@@ -56,6 +59,7 @@ function load() {
     const data = JSON.parse(raw);
     const state = { ...blank(), ...data, settings: { ...DEFAULT_SETTINGS, ...data.settings } };
     state.settings.goals = { ...DEFAULT_SETTINGS.goals, ...state.settings.goals };
+    state.journey = { ...blank().journey, ...state.journey };
     // Older entries predate sipping time.
     state.drinks.forEach((d) => Number.isFinite(d.sipMin) || (d.sipMin = sipMinutesFor(d)));
     return state;

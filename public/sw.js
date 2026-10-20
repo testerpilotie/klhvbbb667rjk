@@ -1,5 +1,5 @@
 // Offline-first service worker: the whole app is a handful of static files.
-const CACHE = 'optihol-v2.6.0';
+const CACHE = 'optihol-v2.7.0';
 const SHELL = [
   './',
   './index.html',
@@ -14,6 +14,8 @@ const SHELL = [
   './js/score.js',
   './js/share.js',
   './js/feel.js',
+  './js/plan.js',
+  './js/ui/recipe.js',
   './js/ui/common.js',
   './js/ui/now.js',
   './js/ui/history.js',
