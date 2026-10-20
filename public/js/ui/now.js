@@ -32,6 +32,7 @@ export function nowView(ctx) {
   return (
     lastNightCard(ctx) +
     planCard(ctx) +
+    (d.upcomingPlan ? '' : goingOutCard(ctx)) +
     // Brand new: the checklist (with your zone in drinks) comes before an empty gauge.
     (fresh ? journeyCard(ctx) + hero(ctx) : hero(ctx) + journeyCard(ctx)) +
     (fresh ? '' : weekCard(ctx)) +
@@ -60,7 +61,7 @@ function hero(ctx) {
     else if (status === 'above' || status === 'high') {
       const back = dropsBelowAt(a.future, zone.max);
       trend = back ? `Falling · back in your zone by <b>${F.time(back)}</b>` : 'Falling';
-    } else if (status === 'sober') trend = `Almost clear · by <b>${F.time(a.soberAt)}</b>`;
+    } else if (status === 'sober') trend = 'Below 0.05 ‰ — sober';
     else trend = `Falling · sober by <b>${F.time(a.soberAt)}</b>`;
   }
   const range = a.active && a.range.high > 0.02
@@ -163,7 +164,7 @@ function tonightCard({ state, d }) {
     limit > 0
       ? { label: `Under ${F.bac(limit, unit)}`, value: a.belowLimitAt ? F.time(a.belowLimitAt) : 'Now', sub: 'cautious estimate', warn: !!a.belowLimitAt }
       : { label: 'Drinks', value: active.drinks.length, sub: `${F.std(active.drinks.reduce((m, x) => m + x.grams, 0), state.settings.standardGrams)} standard` },
-    { label: 'Sober by', value: F.time(a.soberAt), sub: F.relative(a.soberAt, d.now) },
+    { label: 'Sober by', value: F.time(a.soberAt), sub: `below 0.05 ‰ · cautious ${F.time(a.soberCautious)}` },
   ];
   const food = d.food;
   return `<section class="card tonight st-${a.status}">
@@ -196,8 +197,9 @@ function drinksCard({ d, ui }) {
     <div class="card-title">Drinks <small>${plural(active.drinks.length, 'drink', 'drinks')}${waterCount ? ` · ${plural(waterCount, 'water', 'waters')}` : ''} · tap to edit</small></div>
     <div class="list">${rows}</div>${toggle}
     <div class="card-foot">
-      <button class="btn btn-ghost btn-sm" data-action="done">${ICONS.moon}Done for tonight</button>
-      <button class="btn btn-ghost btn-sm" data-action="reading">${ICONS.gauge}${d.calibrated ? 'New reading' : 'Breathalyzer'}</button>
+      <button class="btn btn-ghost btn-sm" data-action="done">${ICONS.moon}Done</button>
+      <button class="btn btn-ghost btn-sm" data-action="invite">🍻 Invite</button>
+      <button class="btn btn-ghost btn-sm" data-action="reading">${ICONS.gauge}${d.calibrated ? 'Reading' : 'Breathalyzer'}</button>
     </div>
   </section>`;
 }
@@ -238,6 +240,17 @@ function journeyCard({ state, d }) {
     ${recipe}
     <ol class="j-steps">${rows}</ol>
     <div class="j-foot">${j.complete ? '<button class="btn btn-primary btn-sm" data-action="journey-hide">Nice</button>' : '<button class="link" data-action="journey-hide">Hide this</button>'}</div>
+  </section>`;
+}
+
+/** The idle-state front door to planning and inviting: where you think about tonight. */
+function goingOutCard({ d }) {
+  return `<section class="card going-out">
+    <div class="go-head"><span class="go-emoji">🍻</span><div><b>Going out?</b><small>Plan your pace — and bring your crew along.</small></div></div>
+    <div class="guide-actions">
+      <button class="btn btn-ghost btn-grow" data-action="plan">${ICONS.clock}Plan a night</button>
+      <button class="btn btn-primary btn-grow" data-action="invite">Invite your crew</button>
+    </div>
   </section>`;
 }
 

@@ -847,3 +847,11 @@ button.ins:not([disabled]) { cursor: pointer; }
 .invite-preview { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: var(--surface-2); border-left: 3px solid var(--amber); }
 .invite-preview small { font-size: 11.5px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.05em; color: var(--faint); }
 .invite-preview p { font-size: 14.5px; margin-top: 2px; }
+
+/* Going out? — the front door to planning and inviting */
+.going-out { display: grid; gap: 12px; background: linear-gradient(150deg, color-mix(in srgb, var(--amber) 12%, var(--surface)), var(--surface) 65%); border-color: color-mix(in srgb, var(--amber) 35%, var(--line)); }
+.go-head { display: flex; gap: 12px; align-items: center; }
+.go-emoji { font-size: 30px; }
+.go-head b { display: block; font-size: 17px; }
+.go-head small { color: var(--muted); font-size: 13.5px; }
+.card-foot .btn-sm { padding: 0 8px; }

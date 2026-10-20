@@ -119,7 +119,8 @@ export function settingsView({ state, d, reminders }) {
       <details><summary>How Optihol calculates</summary><div class="prose" style="margin-top:10px">
         <p>Your body water is estimated from sex, age, height and weight (Watson formula). Each drink is absorbed gradually — faster on an empty stomach, slower and less completely after a meal.</p>
         <p>Your liver clears a roughly fixed amount per hour, slowing down as you approach zero (Michaelis–Menten kinetics). Breathalyzer readings scale the model to your body.</p>
-        <p>The <b>likely range</b> shows where you’d be if your body is lighter or heavier on alcohol than average. “Sober by” and the driving-limit time use the cautious end of it.</p>
+        <p>The <b>likely range</b> shows where you’d be if your body is lighter or heavier on alcohol than average. The driving-limit time uses the cautious end of it.</p>
+        <p><b>Sober</b> means below 0.05 ‰ — what a breathalyzer shows as 0.00. “Sober by” is when the curve on your timeline drops below that.</p>
         <p>The next-drink time is the earliest moment your usual drink can be added without the projected peak going above your zone.</p>
         <p>It’s a model, not a measurement. Medication, fatigue, illness, genetics and how fast you drink all change the real number.</p>
       </div></details>

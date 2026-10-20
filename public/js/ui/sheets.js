@@ -243,10 +243,17 @@ function planSheet(sheet, ctx) {
   const isNow = sheet.startIndex === 0;
   const actions = plan.tooBig || !plan.schedule?.length
     ? ''
-    : isNow
-      ? `<button class="btn btn-primary btn-block" data-action="plan-go">${iconSvg(item.icon, 20)}Log the first one now</button>`
-      : `<div class="guide-actions"><button class="btn btn-ghost btn-grow" data-action="plan-ics">${ICONS.clock}Add to calendar</button><button class="btn btn-primary btn-grow" data-action="plan-save">Save plan</button></div>`;
-  return `${head('Plan a night')}
+    : isNow && sheet.thenInvite
+      ? `<button class="btn btn-primary btn-block" data-action="plan-invite">🍻 Invite your crew</button>
+         <button class="btn btn-ghost btn-block" style="margin-top:8px" data-action="plan-go">${iconSvg(item.icon, 20)}Log the first one now</button>`
+      : isNow
+      ? `<div class="guide-actions"><button class="btn btn-primary btn-grow" data-action="plan-go">${iconSvg(item.icon, 20)}Log the first one now</button><button class="btn btn-ghost" data-action="plan-invite">🍻 Invite</button></div>`
+      : sheet.thenInvite
+        ? `<button class="btn btn-primary btn-block" data-action="plan-invite">🍻 Save &amp; invite your crew</button>
+           <div class="guide-actions" style="margin-top:8px"><button class="btn btn-ghost btn-grow" data-action="plan-save">Just save</button><button class="btn btn-ghost btn-grow" data-action="plan-ics">${ICONS.clock}Calendar</button></div>`
+        : `<div class="guide-actions"><button class="btn btn-primary btn-grow" data-action="plan-save">Save plan</button><button class="btn btn-ghost btn-grow" data-action="plan-invite">🍻 Save &amp; invite</button></div>
+           <button class="btn btn-ghost btn-block" style="margin-top:8px" data-action="plan-ics">${ICONS.clock}Add to calendar</button>`;
+  return `${head(sheet.thenInvite ? 'Plan it, then invite' : 'Plan a night')}
     <div class="label" style="margin-top:0">Start</div>
     <div class="chips">${starts}</div>
     <div class="label">Drink</div>
@@ -259,13 +266,14 @@ function planSheet(sheet, ctx) {
 }
 
 /** The message friends receive. Short, about pacing together, never about drinking more. */
-export function inviteMessage(name, plan) {
-  const when = `${F.day(plan.start)} at ${F.time(plan.start)}`;
-  return `${name ? `${name} here — ` : ''}going out ${when}. I’m pacing it with Optihol so we all stay in the zone 🎯 Join my plan:`;
+export function inviteMessage(name, target) {
+  const now = target.start <= Date.now() + 10 * 60_000;
+  const when = now ? 'right now' : `${F.day(target.start)} at ${F.time(target.start)}`;
+  return `${name ? `${name} here — ` : ''}${now ? 'we’re out' : 'going out'} ${when}. I’m pacing it with Optihol so we all stay in the zone 🎯 Join ${now ? 'us' : 'my plan'}:`;
 }
 
 function inviteSheet(sheet, { state, d }) {
-  const p = state.plan;
+  const p = sheet.target ?? state.plan;
   if (!p) return `${head('Invite your crew')}<p class="empty">Plan a night first.</p>`;
   return `${head('Invite your crew')}
     <p class="prose">Friends who open the link land on <b>your plan</b> and join in 30 seconds — Optihol paces each of them for their own body. No accounts, nothing uploaded.</p>

@@ -213,6 +213,7 @@ function journeyState(state, sessions, feels) {
   const steps = [
     { id: 'profile', label: 'Set up your profile', unlock: 'pacing for your body', done: true },
     { id: 'plan', label: 'Plan a night', unlock: 'your drink-by-drink schedule', done: state.journey.planned, action: 'plan', cta: 'Plan one', primary: true },
+    { id: 'invite', label: 'Invite a friend', unlock: 'a night paced together', done: (state.stats?.invitesSent ?? 0) > 0, action: 'invite', cta: '🍻 Invite', primary: true },
     { id: 'home', label: 'Put Optihol on your home screen', unlock: 'one tap at the bar, works offline', done: install.standalone || state.journey.installed,
       action: install.prompt ? 'install' : 'home-done', cta: install.prompt ? 'Install' : 'I did it', hint: install.prompt ? '' : homeHint },
     { id: 'night', label: 'Log your first night', unlock: 'live pacing and your zone score', done: sessions.length > 0, action: 'add', cta: 'Log a drink' },
@@ -365,7 +366,7 @@ function afterNow(state, d) {
   const el = document.getElementById('timeline');
   if (!el || !active) return;
   const start = Math.max(active.start - 10 * MINUTE, d.now - 5 * HOUR);
-  const end = Math.min(Math.max(a.soberAt, d.now + HOUR) + 10 * MINUTE, d.now + 8 * HOUR);
+  const end = Math.min(Math.max(a.soberCautious, d.now + HOUR) + 10 * MINUTE, d.now + 8 * HOUR);
   const at = (track, t) => (t <= d.now ? M.valueAt(track.past, t) : M.valueAt(track.future, t));
   const points = [];
   for (let t = start; t <= end; t += 2 * MINUTE) points.push([t, at(a, t)]);
@@ -573,7 +574,7 @@ const actions = {
     const d = derive(S.getState());
     const key = d.active ? nightKey(S.getState(), d.active) : null;
     S.update((s) => {
-      s.doneUntil = d.a.soberAt;
+      s.doneUntil = d.a.soberCautious;
       if (key) s.nights[key] = { ...s.nights[key], calledAt: d.now };
     });
     if (key) toast('🌙 Called it. Stick to it and the badge is yours.');
@@ -616,14 +617,14 @@ const actions = {
     const state = S.getState();
     const d = derive(state);
     const hour = new Date(d.now).getHours();
-    const r = recipesFor(state.profile, d.zone)[`${d.zone.min}-${d.zone.max}`];
     const existing = state.plan && state.plan.start > d.now - HOUR ? state.plan : null;
-    openSheet({
-      type: 'plan',
-      startIndex: existing ? 0 : hour >= 17 || hour < 3 ? 0 : 2,
-      itemId: existing?.itemId ?? refDrink(state).id ?? 'pint',
-      count: existing?.count ?? Math.min(6, Math.max(2, (r?.toReach ?? 2) + 1)),
-    });
+    const startIndex = existing ? 0 : hour >= 17 || hour < 3 ? 0 : 2;
+    const itemId = existing?.itemId ?? refDrink(state).id ?? 'pint';
+    openSheet({ type: 'plan', startIndex, itemId, count: existing?.count ?? 1 });
+    if (!existing) {
+      ui.sheet.count = defaultCount(planFor(ui.sheet, ctx(state)).start, itemId);
+      renderSheet();
+    }
   },
   'plan-go'() {
     const state = S.getState();
@@ -787,26 +788,48 @@ const actions = {
     render();
     scrollTo({ top: 0 });
   },
+  /** Invite from anywhere: a saved plan, the night you're on, or plan one first. */
   invite() {
-    openSheet({ type: 'invite', name: S.getState().settings.nickname || '' });
+    const state = S.getState();
+    const d = derive(state);
+    const name = state.settings.nickname || '';
+    if (d.upcomingPlan) return openSheet({ type: 'invite', name, target: { start: d.upcomingPlan.start, itemId: d.upcomingPlan.itemId } });
+    if (d.active) return openSheet({ type: 'invite', name, target: { start: d.now, itemId: refDrink(state).id ?? 'pint' } });
+    actions.plan();
+    ui.sheet.thenInvite = true;
+    renderSheet();
   },
 };
 
-/** Create a plan for a given start and drink, sized from your zone recipe. */
-function makePlan(start, itemId, crew = null) {
+/**
+ * How many drinks a plan suggests by default: enough to reach your zone plus one,
+ * but only as many as start within a realistic 3½-hour evening.
+ */
+function defaultCount(start, itemId) {
   const state = S.getState();
   const d = derive(state);
   const item = catalogue(state).find((c) => c.id === itemId) || catalogue(state).find((c) => c.id === 'pint');
   const r = recipesFor(state.profile, d.zone)[`${d.zone.min}-${d.zone.max}`];
   const ref = { grams: M.gramsOf(item.volumeMl, item.abv), food: 'empty', sipMin: sipMinutesFor(item) };
-  // Fit a realistic evening: only as many drinks as start within 3½ hours.
   const begin = Math.max(start, d.now);
   let count = Math.min(6, Math.max(2, (r?.toReach ?? 2) + 1));
-  let plan = planNight(d.body, d.zone, ref, begin, count);
-  while (count > 1 && plan.schedule?.length && plan.schedule.at(-1) > begin + 3.5 * HOUR) {
+  while (count > 1) {
+    const plan = planNight(d.body, d.zone, ref, begin, count);
+    if (!plan.schedule?.length || plan.schedule.at(-1) <= begin + 3.5 * HOUR) break;
     count -= 1;
-    plan = planNight(d.body, d.zone, ref, begin, count);
   }
+  return count;
+}
+
+/** Create a plan for a given start and drink, sized like the planner's default. */
+function makePlan(start, itemId, crew = null) {
+  const state = S.getState();
+  const d = derive(state);
+  const item = catalogue(state).find((c) => c.id === itemId) || catalogue(state).find((c) => c.id === 'pint');
+  const ref = { grams: M.gramsOf(item.volumeMl, item.abv), food: 'empty', sipMin: sipMinutesFor(item) };
+  const begin = Math.max(start, d.now);
+  const count = defaultCount(begin, item.id);
+  const plan = planNight(d.body, d.zone, ref, begin, count);
   if (plan.tooBig || !plan.schedule.length) return null;
   const saved = { start: plan.schedule[0], itemId: item.id, name: item.name, icon: item.icon, count, schedule: plan.schedule, peak: plan.peak, soberLikely: plan.soberLikely, soberAt: plan.soberAt, crew };
   S.update((s) => {
@@ -843,9 +866,14 @@ function savePlan() {
 
 const sheetActions = {
   'close-sheet': closeSheet,
+  'plan-invite'() {
+    const p = savePlan();
+    if (!p) return;
+    openSheet({ type: 'invite', name: S.getState().settings.nickname || '', target: { start: p.start, itemId: p.itemId } });
+  },
   async 'send-invite'() {
     const state = S.getState();
-    const p = state.plan;
+    const p = ui.sheet.target ?? state.plan;
     if (!p) return;
     const name = (sheetRoot.querySelector('#i-name')?.value ?? '').trim();
     const token = encodeInvite({ name, start: p.start, zone: { min: state.settings.zoneMin, max: state.settings.zoneMax }, drinkId: p.itemId });
@@ -1028,7 +1056,7 @@ sheetRoot.addEventListener('input', (e) => {
   const t = e.target;
   if (t.dataset.ifield) {
     ui.sheet.name = t.value;
-    const p = S.getState().plan;
+    const p = ui.sheet.target ?? S.getState().plan;
     if (p) sheetRoot.querySelector('#i-preview').textContent = `${inviteMessage(t.value.trim(), p)} optihol.com/…`;
     return;
   }

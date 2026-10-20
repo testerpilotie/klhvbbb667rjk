@@ -75,14 +75,22 @@ test('burn-off slows down near zero (Michaelis–Menten tail)', () => {
   assert.ok(slope < 0.13, `slope near 0.1‰ was ${slope}`);
 });
 
-test('the curve reaches exactly zero and sober time is found', () => {
+test('sober means below 0.05 ‰, and the curve still runs down to zero', () => {
   const body = makeBody(MAN);
   const drinks = [pint(T0), pint(T0 + 30 * MINUTE)];
   const sober = soberTime(drinks, body, T0, 0);
   const hours = (sober - T0) / HOUR;
-  assert.ok(hours > 2 && hours < 6, `sober after ${hours} h`);
-  const cv = curve(drinks, body, T0, sober + HOUR);
-  assert.equal(valueAt(cv, sober + 30 * MINUTE), 0);
+  assert.ok(hours > 2 && hours < 5, `sober after ${hours} h`);
+  const cv = curve(drinks, body, T0, sober + 3 * HOUR);
+  assert.ok(valueAt(cv, sober) < 0.05 && valueAt(cv, sober - 2 * MINUTE) >= 0.05, 'crosses 0.05 ‰ right there');
+  assert.equal(valueAt(cv, sober + 3 * HOUR), 0);
+});
+
+test('one beer is sober within a few hours, not six', () => {
+  const body = makeBody(WOMAN);
+  const sober = soberTime([{ ...pint(T0), sipMin: 25 }], body, T0, 0);
+  const hours = (sober - T0) / HOUR;
+  assert.ok(hours > 2 && hours < 4.5, `one beer, 60 kg woman: ${hours.toFixed(1)} h`);
 });
 
 test('food lowers and delays the peak', () => {
@@ -142,9 +150,10 @@ test('analyze reports a range and conservative safety times', () => {
   assert.ok(a.range.low < a.bac && a.bac < a.range.high, JSON.stringify(a.range));
   assert.ok(a.peakAt > now);
   assert.ok(a.belowLimitAt > a.peakAt);
-  // Safety times come from the high end, so they're later than the central estimate.
-  assert.ok(a.soberAt > session.soberAt);
-  const later = analyze(session, bodiesOf(body), a.soberAt + MINUTE, { zone: ZONE, drivingLimit: 0.5 });
+  // "Sober by" follows the central curve; the cautious end is later.
+  assert.ok(Math.abs(a.soberAt - session.soberAt) <= 2 * MINUTE);
+  assert.ok(a.soberCautious > a.soberAt);
+  const later = analyze(session, bodiesOf(body), a.soberCautious + MINUTE, { zone: ZONE, drivingLimit: 0.5 });
   assert.equal(later.active, false);
 });
 
@@ -186,6 +195,7 @@ test('weekly totals bucket by Monday-start weeks', () => {
 
 test('status buckets', () => {
   assert.equal(statusOf(0, ZONE), 'sober');
+  assert.equal(statusOf(0.04, ZONE), 'sober', 'below 0.05 ‰ counts as sober');
   assert.equal(statusOf(0.3, ZONE), 'below');
   assert.equal(statusOf(0.6, ZONE), 'zone');
   assert.equal(statusOf(0.85, ZONE), 'above');

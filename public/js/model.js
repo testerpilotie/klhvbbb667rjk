@@ -18,7 +18,9 @@ const ETHANOL_DENSITY = 0.789; // g/ml
 const BLOOD_WATER_FRACTION = 0.8;
 const ABSORBED_EPSILON_G = 0.05; // grams still in the gut we treat as "fully absorbed"
 const KM = 0.05; // ‰, Michaelis constant of alcohol dehydrogenase (≈ 0.05–0.1 g/L)
-const ZERO = 0.01; // ‰; below this we call it sober
+const ZERO = 0.01; // ‰; the curve snaps to 0 below this
+// ‰; "sober" means below this. It's what a breathalyzer shows as 0.00, and what people mean.
+export const SOBER_BAC = 0.05;
 
 export const FOOD = {
   empty: { ka: 4.0, bioavailability: 1.0 },
@@ -151,8 +153,8 @@ function gutAt(drinks, t) {
   return g;
 }
 
-/** First time ≥ from when BAC is 0 and nothing is left to absorb. Searches up to 36 h. */
-export function soberTime(drinks, body, from, cFrom) {
+/** First time ≥ from when BAC is below SOBER_BAC and nothing is left to absorb. Searches up to 36 h. */
+export function soberTime(drinks, body, from, cFrom, threshold = SOBER_BAC) {
   const lastDrink = Math.max(...drinks.map((d) => d.t));
   let t = from;
   let c = cFrom;
@@ -161,7 +163,7 @@ export function soberTime(drinks, body, from, cFrom) {
     const cv = curve(drinks, body, t, t + chunk, c);
     for (let i = 0; i < cv.values.length; i++) {
       const ti = t + i * STEP;
-      if (cv.values[i] <= 0 && ti >= lastDrink && gutAt(drinks, ti) < ABSORBED_EPSILON_G) return ti;
+      if (cv.values[i] < threshold && ti >= lastDrink && gutAt(drinks, ti) < ABSORBED_EPSILON_G) return ti;
     }
     t += chunk;
     c = cv.values[cv.values.length - 1];
@@ -261,13 +263,15 @@ function track(drinks, body, start, now) {
   const past = curve(drinks, body, start, now);
   const bac = past.values[past.values.length - 1];
   const soberAt = soberTime(drinks, body, now, bac);
-  const future = curve(drinks, body, now, Math.max(soberAt, now + 30 * MINUTE), bac);
+  // Draw the tail a little past "sober" so the projected line visibly lands near zero.
+  const future = curve(drinks, body, now, Math.max(soberAt + HOUR, now + 30 * MINUTE), bac);
   return { past, future, bac, soberAt };
 }
 
 /**
  * Everything the Now screen needs for the current session.
- * Times that matter for safety (below driving limit, sober) come from the high end of the range.
+ * "Sober by" follows the central curve (the one on the graph); the driving-limit time and
+ * whether the night is still active use the cautious end of the range.
  * @param session  from splitSessions (the latest one), or null
  * @param bodies   { main, high, low }
  */
@@ -307,7 +311,8 @@ export function analyze(session, bodies, now, { zone, drivingLimit }) {
     rising,
     peak,
     peakAt,
-    soberAt: high.soberAt,
+    soberAt: main.soberAt,
+    soberCautious: high.soberAt,
     belowLimitAt,
     zoneDropAt,
     minutesInZone: inZone,
@@ -320,7 +325,7 @@ export function analyze(session, bodies, now, { zone, drivingLimit }) {
 }
 
 export function statusOf(bac, zone) {
-  if (bac <= 0) return 'sober';
+  if (bac < SOBER_BAC) return 'sober';
   if (bac < zone.min) return 'below';
   if (bac <= zone.max) return 'zone';
   if (bac <= Math.max(zone.max + 0.3, 1.0)) return 'above';
