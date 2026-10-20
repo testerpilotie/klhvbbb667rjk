@@ -1,0 +1,24 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test --test-reporter=spec
+      - name: App changes must bump the service-worker version
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --depth=1 origin "${{ github.base_ref }}"
+          if ! git diff --quiet "origin/${{ github.base_ref }}" HEAD -- public; then
+            git diff "origin/${{ github.base_ref }}" HEAD -- public/sw.js | grep -q '^+const CACHE' \
+              || { echo "::error file=public/sw.js::public/ changed — bump const CACHE in public/sw.js or the server will refuse to deploy"; exit 1; }
+          fi

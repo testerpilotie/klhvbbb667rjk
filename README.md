@@ -37,17 +37,21 @@ Only `public/` is served. Everything else (tests, docs) stays private.
   the `optihol.com` block in `/home/scaffold/sites/Caddyfile` serves
   `/srv/optihol-sock/public` with `file_server`.
 
-To release a new version:
+**Releasing is automatic.**
+1. Bump `CACHE` in `public/sw.js` whenever `public/` changes.
+2. Open a pull request. GitHub runs the tests and checks the version bump.
+3. Merge it.
 
-1. Bump `CACHE` in `public/sw.js` so installed copies pick up the update.
-2. Push to `main`.
-3. On the server, run:
+Within about 2 minutes the `sites-deployer-1` container on the server fetches `main`, re-runs the tests, checks the bump, and fast-forwards the checkout as the `optihol` user. Check the result at https://optihol.com/deploy-status.json (`live`, `deployed`, or `blocked` with the reason). Nothing to run on the server, no sudo, no Caddy reload. This works from a phone: a Claude cloud session opens the PR, and you merge it in the GitHub app.
 
-   ```bash
-   sudo -u optihol git -C /home/optihol/klhvbbb667rjk pull
-   ```
+Caddy sends `Cache-Control: no-cache` on every file, and the service worker installs each version atomically, so users never get a mix of old and new files.
 
-No Caddy reload is needed for content changes. Caddy sends `Cache-Control: no-cache` on every file, and the service worker installs each version atomically (fresh from the server), so users never get a mix of old and new files.
+Server pieces, all in `/home/scaffold/sites` (owned by `scaffold`):
+- `Caddyfile`
+- `docker-compose.yml` (services `caddy` and `deployer`)
+- `deployer/` (Dockerfile and `deploy.sh`)
+
+Logs: `docker logs sites-deployer-1`.
 
 The same origin matters: on first launch v2 reads v1's IndexedDB (`OptiholDB`), so
 existing users keep their profile and drink history.
