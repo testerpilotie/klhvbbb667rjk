@@ -827,3 +827,23 @@ button.ins:not([disabled]) { cursor: pointer; }
 .plan-sum { font-size: 14px; color: var(--muted); margin-top: 10px; }
 .plan-sum b { color: var(--fg); }
 .preset em small { font-weight: 500; color: var(--muted); font-size: 11px; }
+
+/* ---------- v2.8: crew invites, tap-only profile ---------- */
+.invite-banner { display: flex; gap: 12px; align-items: center; padding: 14px; border-radius: 16px; background: linear-gradient(135deg, color-mix(in srgb, var(--amber) 18%, var(--surface)), var(--surface)); border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--line)); }
+.invite-emoji { font-size: 32px; }
+.invite-banner b { display: block; font-size: 16px; }
+.invite-banner small { color: var(--muted); font-size: 13px; }
+.sex-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sex-pick button { min-height: 64px; border-radius: 18px; border: 1.5px solid var(--line); background: var(--surface); color: var(--fg); font-size: 18px; font-weight: 700; }
+.sex-pick button[aria-pressed='true'] { border-color: var(--mint); background: color-mix(in srgb, var(--mint) 14%, var(--surface)); }
+.tap-fields { display: grid; gap: 14px; animation: fade 0.3s; }
+.tap-field { display: grid; gap: 8px; padding: 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+.ob-more .tap-field { margin-top: 10px; background: var(--surface-2); }
+.tap-head { display: flex; justify-content: space-between; align-items: baseline; }
+.tap-head b { font-size: 26px; font-weight: 750; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.tap-row { display: flex; align-items: center; gap: 10px; }
+.tap-row input[type='range'] { flex: 1; height: 32px; }
+.round { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface-2); color: var(--fg); font-size: 22px; flex: none; }
+.invite-preview { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: var(--surface-2); border-left: 3px solid var(--amber); }
+.invite-preview small { font-size: 11.5px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.05em; color: var(--faint); }
+.invite-preview p { font-size: 14.5px; margin-top: 2px; }

@@ -149,7 +149,7 @@ export function drawNight(canvas, night, { zone, unit, standardGrams }) {
 function summaryText(night, unit) {
   const sc = night.score;
   const head = sc.score == null ? '🍃 Took it easy tonight' : `🎯 Zone score ${sc.score} — ${GRADES[sc.grade].label}`;
-  return `${head}. Peak ${F.bac(night.stats.peak, unit)}, ${F.duration(sc.minutesInZone * MINUTE)} in the zone. Tracked with Optihol.`;
+  return `${head}. Peak ${F.bac(night.stats.peak, unit)}, ${F.duration(sc.minutesInZone * MINUTE)} in the zone. Paced with Optihol → https://optihol.com`;
 }
 
 /** Share the recap as an image (Web Share) or download it. Returns 'shared' | 'downloaded'. */
@@ -160,7 +160,7 @@ export async function shareNight(night, opts) {
   const file = new File([blob], `optihol-${F.weekLabel(night.stats.start).replace(/\D+/g, '-')}.png`, { type: 'image/png' });
   const text = summaryText(night, opts.unit);
   if (navigator.canShare?.({ files: [file] })) {
-    await navigator.share({ files: [file], title: 'My night on Optihol', text });
+    await navigator.share({ files: [file], title: 'My night on Optihol', text, url: 'https://optihol.com/' });
     return 'shared';
   }
   const a = document.createElement('a');

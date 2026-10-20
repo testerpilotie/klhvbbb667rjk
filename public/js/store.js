@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS = {
   standardGrams: defaultStandardGrams(),
   reminders: false,
   goals: { freeDays: 4, neverOver: true, maxStd: 0 }, // weekly; maxStd 0 = no cap
+  nickname: '', // first name shown to friends in crew invites (optional)
 };
 
 /** Grams of alcohol in one "standard drink" — differs by country. */
@@ -47,7 +48,9 @@ function blank() {
     doneUntil: null,
     installDismissed: false,
     journey: { planned: false, installed: false, dismissed: false }, // first-nights checklist
-    plan: null, // a planned night: { start, itemId, name, icon, count, schedule, peak, soberAt }
+    plan: null, // a planned night: { start, itemId, name, icon, count, schedule, peak, soberAt, crew }
+    invite: null, // a crew invite waiting to be joined (from a ?crew= link)
+    stats: { invitesSent: 0 },
     lastSeen: null,
   };
 }
@@ -60,6 +63,7 @@ function load() {
     const state = { ...blank(), ...data, settings: { ...DEFAULT_SETTINGS, ...data.settings } };
     state.settings.goals = { ...DEFAULT_SETTINGS.goals, ...state.settings.goals };
     state.journey = { ...blank().journey, ...state.journey };
+    state.stats = { ...blank().stats, ...state.stats };
     // Older entries predate sipping time.
     state.drinks.forEach((d) => Number.isFinite(d.sipMin) || (d.sipMin = sipMinutesFor(d)));
     return state;

@@ -57,6 +57,7 @@ export const BADGES = {
   'tuned-in': { emoji: '🧘', name: 'Tuned in', desc: 'Checked in on how you feel twice in a night' },
   'goal-week': { emoji: '🗓️', name: 'Goal week', desc: 'Met every weekly goal, Monday to Sunday', weekly: true },
   'dry-week': { emoji: '🌿', name: 'Dry week', desc: 'A whole week without alcohol', weekly: true },
+  crew: { emoji: '🤝', name: 'Crew captain', desc: 'Invited friends to pace a night together', weekly: true },
 };
 
 export const TIERS = [

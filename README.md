@@ -65,6 +65,8 @@ it's ever moved there.
 | `public/js/ui/*.js` | Views: `now`, `history`, `settings`, `onboarding`, `sheets` (add / custom / edit / breathalyzer), `common` |
 | `public/js/score.js` | Zone score, badges + tiers, weekly goals + week streak, live goals, calendar, sweet spot. No DOM |
 | `public/js/feel.js` | Subjective check-ins: personal feel zone, agreement with the model, trend, zone suggestion. No DOM |
+| `public/js/plan.js` | Night planner (paced schedule, zone recipe in drinks) and .ics export. No DOM |
+| `public/js/invite.js` | Crew invite links: encode/decode/validate, no server. No DOM |
 | `public/js/share.js` | Canvas recap image + Web Share |
 | `public/js/chart.js` | SVG gauge and interactive timeline |
 | `public/js/store.js` | localStorage persistence, export/import, v1 migration |

@@ -248,15 +248,15 @@ function planCard({ state, d }) {
   const soon = d.now >= p.start - 60 * MINUTE;
   const when = p.start > d.now ? `starts ${F.relative(p.start, d.now)}` : 'ready when you are';
   return `<section class="card plan-card">
-    <div class="card-title">Your plan <small>${when}</small></div>
+    <div class="card-title">${p.crew ? `Crew plan with ${F.esc(p.crew)}` : 'Your plan'} <small>${when}</small></div>
     <div class="plan-times">${p.schedule
       .map((t, i) => `<span class="${i === 0 && soon ? 'now' : ''}">${iconSvg(p.icon, 18)}<b>${F.time(t)}</b></span>`)
       .join('<i></i>')}</div>
     <p class="hint" style="margin:0">${plural(p.schedule.length, F.esc(p.name), F.esc(p.name) + 's')} · peak ${F.bac(p.peak, state.settings.unit)} · ${p.soberLikely ? `sober around ${F.time(p.soberLikely)} (cautious ${F.time(p.soberAt)})` : `sober by ${F.time(p.soberAt)} (cautious)`}</p>
     <div class="guide-actions">
-      ${soon ? `<button class="btn btn-primary btn-grow" data-action="plan-go">${iconSvg(p.icon, 18)}Start: log the first</button>` : ''}
-      <button class="btn btn-ghost ${soon ? '' : 'btn-grow'}" data-action="plan">Edit</button>
-      <button class="btn btn-ghost" data-action="plan-clear">Clear</button>
+      ${soon ? `<button class="btn btn-primary btn-grow" data-action="plan-go">${iconSvg(p.icon, 18)}Start: log the first</button>` : `<button class="btn btn-primary btn-grow" data-action="invite">🍻 Invite your crew</button>`}
+      <button class="btn btn-ghost" data-action="plan">Edit</button>
+      ${soon ? '<button class="btn btn-ghost" data-action="invite" aria-label="Invite your crew">🍻</button>' : '<button class="btn btn-ghost" data-action="plan-clear">Clear</button>'}
     </div>
   </section>`;
 }

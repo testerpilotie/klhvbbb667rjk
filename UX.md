@@ -138,3 +138,28 @@ Ethics: the planner never schedules a drink that would overshoot your zone, show
 
 Not measurable without analytics, which we deliberately don't collect: actual day-1, day-7 and day-30 return rates.
 The next learning step is five people, one evening each, watched or interviewed the morning after.
+
+---
+
+# Growth review: what Nikita Bier would change (v2.8)
+
+**Diagnosis.** By v2.7 Optihol was a good *solo* product, but nothing in it makes it spread. Nights out happen with friends, yet the app treated every user as alone. The first minute still asked for typing (weight, height, age), and every keyboard is a drop-off point.
+
+**Principles applied**
+1. **Growth inside the core action.** The invite isn't a share button in a menu. It sits on the thing you just did: planning a night. "Plan saved — Invite crew" is one tap at the moment of highest intent.
+2. **Land invitees in context.** A friend opening the link doesn't see a generic app. They see *"Joonas invited you to their crew · Tue 11:00 PM"*, a "Join the crew" button, and finish with a ready-made plan for the same night.
+3. **Zero typing in the first minute.** Pick Man or Woman (typical values fill in), adjust with a slider or ±. Height and age are optional for accuracy. **0 keyboard inputs** in onboarding.
+4. **Every artefact carries a way back.** The recap share text ends with optihol.com, and every invitee gets their own "Invite your crew" button, so the loop can repeat.
+5. **Reward the social act, not the drinking.** 🤝 *Crew captain* counts invites sent, with tiers. Copy is always about staying in the zone together.
+
+**How it works without a server.** The invite lives in the link (`?crew=`, base64url JSON). It carries only a first name, the start time, the zone and the drink id. No profile, BAC or history leaves the phone. Links are validated: version, a zone of 0.2–1.0 ‰ that's at least 0.1 wide, starts no more than 2 weeks ahead, and old invites still join the crew but don't create a plan.
+
+**Verified end to end**
+| Path | Result |
+|---|---|
+| Inviter | Tap-only signup (5 taps, 0 typing), plan, "Invite crew" toast, share sheet gets the message and link, Crew captain counted |
+| New friend | Link opens the invite landing, link is removed from the address bar, 5 taps, zone pre-set from the invite, "Crew plan with Joonas" for the same 11:00 PM start |
+| Existing user | Link joins immediately, no onboarding again |
+| Body-aware | A 62 kg friend gets 2 beers (11:00, 12:21), not a 4 am third one. Auto-plans fit a 3½-hour evening |
+
+**What he'd insist on next (needs a decision, not code).** Measurement. Without numbers we can't know the invite → install → first night conversion. The privacy-respecting option is a tiny self-hosted counter of anonymous funnel events (no IDs, no BAC), stated plainly in the app. That's a product, legal (GDPR) and trust decision for the owner, so it isn't built here.

@@ -14,7 +14,7 @@ const head = (title) =>
   `<div class="sheet-head"><h2>${title}</h2><button class="icon-btn" data-action="close-sheet" aria-label="Close">${ICONS.close}</button></div>`;
 
 export function sheetTitle(type) {
-  return { add: 'Add drink', custom: 'Custom drink', edit: 'Edit drink', reading: 'Breathalyzer reading', night: 'Night recap', plan: 'Plan a night' }[type];
+  return { add: 'Add drink', custom: 'Custom drink', edit: 'Edit drink', reading: 'Breathalyzer reading', night: 'Night recap', plan: 'Plan a night', invite: 'Invite your crew' }[type];
 }
 
 export function sheetView(sheet, ctx) {
@@ -23,6 +23,7 @@ export function sheetView(sheet, ctx) {
   if (sheet.type === 'edit') return editSheet(sheet, ctx);
   if (sheet.type === 'night') return nightSheet(sheet, ctx);
   if (sheet.type === 'plan') return planSheet(sheet, ctx);
+  if (sheet.type === 'invite') return inviteSheet(sheet, ctx);
   return readingSheet(sheet, ctx);
 }
 
@@ -255,4 +256,21 @@ function planSheet(sheet, ctx) {
     ${result}
     <div style="margin-top:16px">${actions}</div>
     <p class="hint" style="text-align:center">Paced so you never go over your zone. Plans are estimates — never drive after drinking.</p>`;
+}
+
+/** The message friends receive. Short, about pacing together, never about drinking more. */
+export function inviteMessage(name, plan) {
+  const when = `${F.day(plan.start)} at ${F.time(plan.start)}`;
+  return `${name ? `${name} here — ` : ''}going out ${when}. I’m pacing it with Optihol so we all stay in the zone 🎯 Join my plan:`;
+}
+
+function inviteSheet(sheet, { state, d }) {
+  const p = state.plan;
+  if (!p) return `${head('Invite your crew')}<p class="empty">Plan a night first.</p>`;
+  return `${head('Invite your crew')}
+    <p class="prose">Friends who open the link land on <b>your plan</b> and join in 30 seconds — Optihol paces each of them for their own body. No accounts, nothing uploaded.</p>
+    <div class="field" style="margin-top:14px"><label for="i-name">Your first name <span class="muted">(shown to friends, optional)</span></label>
+      <div class="input-wrap"><input id="i-name" data-ifield="name" value="${F.esc(sheet.name ?? '')}" maxlength="24" placeholder="e.g. Joonas" autocomplete="given-name"></div></div>
+    <div class="invite-preview"><small>They’ll see</small><p id="i-preview">${F.esc(inviteMessage(sheet.name, p))} optihol.com/…</p></div>
+    <button class="btn btn-primary btn-block" style="margin-top:16px" data-action="send-invite">Share invite</button>`;
 }

@@ -13,7 +13,10 @@ import { settingsView } from './ui/settings.js';
 import { onboardingView, profileValid } from './ui/onboarding.js';
 import { customValid, gramsHint, planFor, sheetTitle, sheetView } from './ui/sheets.js';
 import { recipesFor } from './ui/recipe.js';
-import { toIcs } from './plan.js';
+import { planNight, toIcs } from './plan.js';
+import { decodeInvite, encodeInvite, inviteUrl } from './invite.js';
+import { PROFILE_DEFAULTS } from './ui/onboarding.js';
+import { inviteMessage } from './ui/sheets.js';
 
 const { MINUTE, HOUR } = M;
 const app = document.getElementById('app');
@@ -237,6 +240,7 @@ function gameState(state, nights, now) {
     for (const n of list) for (const b of n.badges) counts[b] = (counts[b] || 0) + 1;
     counts['goal-week'] = finished.filter((w) => w.won).length;
     counts['dry-week'] = finished.filter((w) => w.days.every((x) => !x.drank)).length;
+    counts.crew = state.stats?.invitesSent || 0;
     return counts;
   };
   const scored = nights.filter((n) => !n.active && n.score.score != null);
@@ -328,15 +332,15 @@ function renderOnboarding(state) {
     ui.ob = {
       step: 0,
       consent: false,
-      profile: state.profile ? { ...state.profile } : { sex: 'male', weightKg: '', heightCm: '', age: '' },
-      zoneMin: state.settings.zoneMin,
-      zoneMax: state.settings.zoneMax,
+      profile: state.profile ? { ...state.profile } : { sex: null, weightKg: '', heightCm: '', age: '' },
+      zoneMin: state.invite?.zone.min ?? state.settings.zoneMin,
+      zoneMax: state.invite?.zone.max ?? state.settings.zoneMax,
       drivingLimit: state.settings.drivingLimit,
       unit: state.settings.unit,
     };
   }
   app.className = 'app onboarding';
-  app.innerHTML = onboardingView(ui.ob);
+  app.innerHTML = onboardingView(ui.ob, state.invite);
 }
 
 function afterNow(state, d) {
@@ -694,7 +698,11 @@ const actions = {
   },
   'profile-sex'(el) {
     if (ui.ob) {
-      ui.ob.profile.sex = el.dataset.value;
+      const sex = el.dataset.value;
+      const p = ui.ob.profile;
+      // First pick fills in typical values; after that, switching keeps what was adjusted.
+      if (!p.weightKg) Object.assign(p, PROFILE_DEFAULTS[sex]);
+      p.sex = sex;
       return render();
     }
     S.update((s) => (s.profile.sex = el.dataset.value));
@@ -754,6 +762,14 @@ const actions = {
     ui.ob.step--;
     render();
   },
+  'ob-adjust'(el) {
+    const { key, dir } = el.dataset;
+    const limits = { weightKg: [40, 150], heightCm: [140, 210], age: [18, 90] }[key];
+    ui.ob.profile[key] = Math.min(limits[1], Math.max(limits[0], Number(ui.ob.profile[key]) + Number(dir)));
+    const open = app.querySelector('.ob-more')?.open;
+    render();
+    if (open) app.querySelector('.ob-more').open = true;
+  },
   'ob-unit'(el) {
     ui.ob.unit = el.dataset.value;
     render();
@@ -767,10 +783,49 @@ const actions = {
       Object.assign(s.settings, { zoneMin: ob.zoneMin, zoneMax: ob.zoneMax, drivingLimit: ob.drivingLimit, unit: ob.unit });
     });
     ui.ob = null;
+    joinInvite();
     render();
     scrollTo({ top: 0 });
   },
+  invite() {
+    openSheet({ type: 'invite', name: S.getState().settings.nickname || '' });
+  },
 };
+
+/** Create a plan for a given start and drink, sized from your zone recipe. */
+function makePlan(start, itemId, crew = null) {
+  const state = S.getState();
+  const d = derive(state);
+  const item = catalogue(state).find((c) => c.id === itemId) || catalogue(state).find((c) => c.id === 'pint');
+  const r = recipesFor(state.profile, d.zone)[`${d.zone.min}-${d.zone.max}`];
+  const ref = { grams: M.gramsOf(item.volumeMl, item.abv), food: 'empty', sipMin: sipMinutesFor(item) };
+  // Fit a realistic evening: only as many drinks as start within 3½ hours.
+  const begin = Math.max(start, d.now);
+  let count = Math.min(6, Math.max(2, (r?.toReach ?? 2) + 1));
+  let plan = planNight(d.body, d.zone, ref, begin, count);
+  while (count > 1 && plan.schedule?.length && plan.schedule.at(-1) > begin + 3.5 * HOUR) {
+    count -= 1;
+    plan = planNight(d.body, d.zone, ref, begin, count);
+  }
+  if (plan.tooBig || !plan.schedule.length) return null;
+  const saved = { start: plan.schedule[0], itemId: item.id, name: item.name, icon: item.icon, count, schedule: plan.schedule, peak: plan.peak, soberLikely: plan.soberLikely, soberAt: plan.soberAt, crew };
+  S.update((s) => {
+    s.plan = saved;
+    s.journey.planned = true;
+  });
+  return saved;
+}
+
+/** Turn a pending crew invite into your own plan for the same night. */
+function joinInvite() {
+  const state = S.getState();
+  const inv = state.invite;
+  if (!inv || !state.profile || !state.acceptedAt) return;
+  S.update((s) => (s.invite = null));
+  if (inv.past) return toast(`${inv.name ?? 'Your friend'}’s night has passed — plan your own any time`);
+  const p = makePlan(inv.start, inv.drinkId, inv.name ?? 'your crew');
+  toast(p ? `You’re in ${inv.name ? `${inv.name}’s` : 'the'} crew — first drink ${F.time(p.start)}` : 'Joined — that drink is too strong for your zone, pick another in the plan');
+}
 
 /** Store the plan from the planner sheet; returns it. */
 function savePlan() {
@@ -788,6 +843,33 @@ function savePlan() {
 
 const sheetActions = {
   'close-sheet': closeSheet,
+  async 'send-invite'() {
+    const state = S.getState();
+    const p = state.plan;
+    if (!p) return;
+    const name = (sheetRoot.querySelector('#i-name')?.value ?? '').trim();
+    const token = encodeInvite({ name, start: p.start, zone: { min: state.settings.zoneMin, max: state.settings.zoneMax }, drinkId: p.itemId });
+    const url = inviteUrl(location.origin, token);
+    const text = inviteMessage(name, p);
+    S.update((s) => {
+      s.settings.nickname = name;
+      s.stats.invitesSent += 1;
+    });
+    closeSheet();
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Join my night on Optihol', text, url });
+        toast('Invite sent 🍻');
+      } else {
+        await navigator.clipboard.writeText(`${text} ${url}`);
+        toast('Invite link copied — paste it in your group chat');
+      }
+    } catch (err) {
+      if (err?.name !== 'AbortError') {
+        prompt('Copy this invite link:', url);
+      }
+    }
+  },
   'plan-start'(el) {
     ui.sheet.startIndex = Number(el.dataset.value);
     renderSheet();
@@ -803,7 +885,7 @@ const sheetActions = {
   'plan-save'() {
     const p = savePlan();
     closeSheet();
-    if (p) toast(`Plan saved — first ${p.name} at ${F.time(p.start)}`);
+    if (p) toast(`Plan saved — first ${p.name} at ${F.time(p.start)}`, { label: 'Invite crew', run: () => actions.invite() });
   },
   'plan-ics'() {
     const p = savePlan();
@@ -944,6 +1026,12 @@ sheetRoot.addEventListener('change', (e) => {
 
 sheetRoot.addEventListener('input', (e) => {
   const t = e.target;
+  if (t.dataset.ifield) {
+    ui.sheet.name = t.value;
+    const p = S.getState().plan;
+    if (p) sheetRoot.querySelector('#i-preview').textContent = `${inviteMessage(t.value.trim(), p)} optihol.com/…`;
+    return;
+  }
   if (t.dataset.rfield) {
     ui.sheet.value = t.value === '' ? null : Number(t.value);
     const btn = sheetRoot.querySelector('[data-action="save-reading"]');
@@ -968,6 +1056,8 @@ app.addEventListener('input', (e) => {
   const scope = t.closest('[data-scope]')?.dataset.scope;
   if (scope === 'ob-profile') {
     ui.ob.profile[t.dataset.field] = t.value === '' ? '' : Number(t.value);
+    const out = app.querySelector(`[data-out="${t.dataset.field}"]`);
+    if (out) out.textContent = t.value;
     app.querySelector('[data-action="ob-next"]').disabled = !profileValid(ui.ob.profile);
   }
   if (t.dataset.field === 'elimination') {
@@ -1039,6 +1129,16 @@ document.addEventListener('visibilitychange', () => document.visibilityState ===
 // Home-screen shortcuts and links like ./?log=pint or ./?log=water
 function handleDeepLink() {
   const params = new URLSearchParams(location.search);
+  const crew = params.get('crew');
+  if (crew) {
+    history.replaceState(null, '', location.pathname);
+    const inv = decodeInvite(crew);
+    if (inv) {
+      S.update((s) => (s.invite = inv));
+      if (S.getState().acceptedAt && S.getState().profile) joinInvite();
+    }
+    return;
+  }
   const what = params.get('log');
   if (!what) return;
   history.replaceState(null, '', location.pathname);
@@ -1070,8 +1170,8 @@ function welcomeBack() {
   const st = S.getState();
   if (st.readings.length && !st.calibration && st.profile) S.update((s) => (s.calibration = refitCalibration(s)));
 }
-render();
 handleDeepLink();
+render();
 welcomeBack();
 S.migrateFromV1().then((migrated) => {
   if (migrated) toast('Imported your data from the previous Optihol');
