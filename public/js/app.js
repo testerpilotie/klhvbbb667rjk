@@ -336,8 +336,6 @@ function renderOnboarding(state) {
       profile: state.profile ? { ...state.profile } : { sex: null, weightKg: '', heightCm: '', age: '' },
       zoneMin: state.invite?.zone.min ?? state.settings.zoneMin,
       zoneMax: state.invite?.zone.max ?? state.settings.zoneMax,
-      drivingLimit: state.settings.drivingLimit,
-      unit: state.settings.unit,
     };
   }
   app.className = 'app onboarding';
@@ -711,20 +709,12 @@ const actions = {
   'zone-step'(el) {
     const key = el.dataset.key;
     const delta = 0.05 * Number(el.dataset.dir);
-    const src = ui.ob || S.getState().settings;
+    const src = S.getState().settings;
     const next = clampZone(key === 'zoneMin' ? src.zoneMin + delta : src.zoneMin, key === 'zoneMax' ? src.zoneMax + delta : src.zoneMax, key);
-    if (ui.ob) {
-      Object.assign(ui.ob, next);
-      return render();
-    }
     S.update((s) => Object.assign(s.settings, next));
   },
   'zone-preset'(el) {
     const next = { zoneMin: Number(el.dataset.min), zoneMax: Number(el.dataset.max) };
-    if (ui.ob) {
-      Object.assign(ui.ob, next);
-      return render();
-    }
     S.update((s) => Object.assign(s.settings, next));
   },
   'new-custom'() {
@@ -771,17 +761,13 @@ const actions = {
     render();
     if (open) app.querySelector('.ob-more').open = true;
   },
-  'ob-unit'(el) {
-    ui.ob.unit = el.dataset.value;
-    render();
-  },
   'ob-finish'() {
     const ob = ui.ob;
     const p = ob.profile;
     S.update((s) => {
       s.acceptedAt = Date.now();
       s.profile = { sex: p.sex, weightKg: +p.weightKg, heightCm: +p.heightCm, age: +p.age };
-      Object.assign(s.settings, { zoneMin: ob.zoneMin, zoneMax: ob.zoneMax, drivingLimit: ob.drivingLimit, unit: ob.unit });
+      Object.assign(s.settings, { zoneMin: ob.zoneMin, zoneMax: ob.zoneMax });
     });
     ui.ob = null;
     joinInvite();
@@ -1086,7 +1072,7 @@ app.addEventListener('input', (e) => {
     ui.ob.profile[t.dataset.field] = t.value === '' ? '' : Number(t.value);
     const out = app.querySelector(`[data-out="${t.dataset.field}"]`);
     if (out) out.textContent = t.value;
-    app.querySelector('[data-action="ob-next"]').disabled = !profileValid(ui.ob.profile);
+    app.querySelector('[data-action="ob-finish"]').disabled = !profileValid(ui.ob.profile);
   }
   if (t.dataset.field === 'elimination') {
     const s = S.getState().settings;
@@ -1110,10 +1096,6 @@ app.addEventListener('change', (e) => {
   const key = t.dataset.field;
   if (!key) return;
   const scope = t.closest('[data-scope]')?.dataset.scope;
-  if (scope === 'ob-zone') {
-    ui.ob.drivingLimit = Number(t.value);
-    return;
-  }
   if (scope === 'profile') {
     const v = Number(t.value);
     const next = { ...S.getState().profile, [key]: v };

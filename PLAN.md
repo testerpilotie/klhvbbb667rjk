@@ -25,7 +25,7 @@ that serves files (Cloudflare Pages, Netlify, nginx on the Hetzner box).
 ### Product
 
 1. **Onboarding** (first run): 18+ / estimate-only acknowledgement → body
-   profile → target zone. Under a minute.
+   profile. Zone starts at 0.5–0.7 ‰ and is changed in Settings. Under a minute.
 2. **Now screen**
    - Big live BAC readout + status (below / in zone / above / well above)
    - Next-drink guidance: *"Next drink at 21:40"* computed so your usual drink

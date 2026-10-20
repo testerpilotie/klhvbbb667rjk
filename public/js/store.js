@@ -9,7 +9,7 @@ const listeners = new Set();
 export const DEFAULT_SETTINGS = {
   zoneMin: 0.5,
   zoneMax: 0.7,
-  drivingLimit: 0.5,
+  drivingLimit: 0, // 0 = line hidden; opt in under Settings → Your zone
   unit: 'permille', // 'permille' | 'percent'
   elimination: DEFAULT_ELIMINATION,
   theme: 'system', // 'system' | 'dark' | 'light'

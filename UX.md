@@ -163,3 +163,13 @@ The next learning step is five people, one evening each, watched or interviewed 
 | Body-aware | A 62 kg friend gets 2 beers (11:00, 12:21), not a 4 am third one. Auto-plans fit a 3½-hour evening |
 
 **What he'd insist on next (needs a decision, not code).** Measurement. Without numbers we can't know the invite → install → first night conversion. The privacy-respecting option is a tiny self-hosted counter of anonymous funnel events (no IDs, no BAC), stated plainly in the app. That's a product, legal (GDPR) and trust decision for the owner, so it isn't built here.
+
+---
+
+# Two-screen onboarding (v2.9.2)
+
+The zone screen was the third and last step, and most people accepted the preset anyway. It's gone:
+onboarding is consent, then the body basics, then straight to the Now screen. Everyone starts at
+**0.5–0.7 ‰**; zone, units and the driving line live under Settings → Your zone. An invite still
+pre-sets the inviter's zone. The driving limit line (and the "Under x ‰" tile it drives) is now
+**off by default**; it's opt-in in Settings. Existing users keep whatever they saved.

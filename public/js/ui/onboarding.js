@@ -1,11 +1,10 @@
 // First open. Goal: a personal "aha" in under a minute, without needing to be drinking.
-// One consent tap, the body basics, then the zone chosen in drinks rather than ‰. See UX.md.
+// One consent tap, then the body basics. Zone, units and driving line start at sensible
+// defaults and live in Settings. See UX.md.
 
 import * as F from '../format.js';
 import { gaugeSvg } from '../chart.js';
-import { ICONS, seg } from './common.js';
-import { recipeSentence, recipesFor } from './recipe.js';
-import { limitSelect, zoneFields } from './settings.js';
+import { ICONS } from './common.js';
 
 export function profileValid(p) {
   return p.weightKg >= 35 && p.weightKg <= 250 && p.heightCm >= 120 && p.heightCm <= 230 && p.age >= 18 && p.age <= 110;
@@ -36,7 +35,7 @@ function inviteBanner(invite) {
 }
 
 export function onboardingView(ob, invite = null) {
-  const steps = `<div class="ob-steps">${[0, 1, 2].map((i) => `<span class="${i <= ob.step ? 'on' : ''}"></span>`).join('')}</div>`;
+  const steps = `<div class="ob-steps">${[0, 1].map((i) => `<span class="${i <= ob.step ? 'on' : ''}"></span>`).join('')}</div>`;
   const back = ob.step ? `<button class="btn btn-ghost" data-action="ob-back">Back</button>` : '';
 
   if (ob.step === 0 && invite) {
@@ -69,44 +68,25 @@ export function onboardingView(ob, invite = null) {
         <button class="btn btn-primary btn-block" data-action="ob-next" ${ob.consent ? '' : 'disabled'}>Get started</button>
       </div></div>`;
   }
-  if (ob.step === 1) {
-    const p = ob.profile;
-    const chosen = p.sex === 'male' || p.sex === 'female';
-    const body = chosen
-      ? `<div data-scope="ob-profile" class="tap-fields">
-          ${slider('weightKg', 'Weight', p.weightKg, 40, 150, 'kg')}
-          <details class="ob-more"><summary>Height and age · for a sharper estimate</summary>
-            ${slider('heightCm', 'Height', p.heightCm, 140, 210, 'cm')}
-            ${slider('age', 'Age', p.age, 18, 90, 'years')}
-          </details>
-        </div>`
-      : '';
-    return `<div class="ob">${steps}
-      <div><h1>About you</h1><p class="lead" style="margin-top:10px">Two taps. Bodies handle alcohol differently.</p></div>
-      <div class="sex-pick">
-        <button data-action="profile-sex" data-value="male" aria-pressed="${p.sex === 'male'}">Man</button>
-        <button data-action="profile-sex" data-value="female" aria-pressed="${p.sex === 'female'}">Woman</button>
-      </div>
-      ${body}
-      <p class="hint" style="margin:0">${ICONS.lock} Stays on this phone. Change it any time in Settings.</p>
-      <div class="ob-foot"><div class="guide-actions">${back}<button class="btn btn-primary btn-grow" data-action="ob-next" ${chosen && profileValid(p) ? '' : 'disabled'}>Continue</button></div></div>
-    </div>`;
-  }
-  const zone = { min: ob.zoneMin, max: ob.zoneMax };
-  const recipes = recipesFor(ob.profile, zone);
+  const p = ob.profile;
+  const chosen = p.sex === 'male' || p.sex === 'female';
+  const body = chosen
+    ? `<div data-scope="ob-profile" class="tap-fields">
+        ${slider('weightKg', 'Weight', p.weightKg, 40, 150, 'kg')}
+        <details class="ob-more"><summary>Height and age · for a sharper estimate</summary>
+          ${slider('heightCm', 'Height', p.heightCm, 140, 210, 'cm')}
+          ${slider('age', 'Age', p.age, 18, 90, 'years')}
+        </details>
+      </div>`
+    : '';
   return `<div class="ob">${steps}
-    <div><h1>Pick your zone</h1><p class="lead" style="margin-top:10px">Where you like to be. Optihol paces you to stay there.</p></div>
-    <div class="form-grid" data-scope="ob-zone">
-      ${zoneFields(ob.zoneMin, ob.zoneMax, ob.unit, recipes, { compact: true })}
+    <div><h1>About you</h1><p class="lead" style="margin-top:10px">Two taps. Bodies handle alcohol differently.</p></div>
+    <div class="sex-pick">
+      <button data-action="profile-sex" data-value="male" aria-pressed="${p.sex === 'male'}">Man</button>
+      <button data-action="profile-sex" data-value="female" aria-pressed="${p.sex === 'female'}">Woman</button>
     </div>
-    <div class="recipe">${ICONS.check}<p>${recipeSentence(recipes[`${zone.min}-${zone.max}`])}</p></div>
-    <details class="ob-more"><summary>Fine-tune, units and driving line</summary>
-      <div class="form-grid" data-scope="ob-zone" style="margin-top:12px">
-        ${zoneFields(ob.zoneMin, ob.zoneMax, ob.unit, null, { steppersOnly: true })}
-        <div class="field full"><span class="lbl">Units</span>${seg('ob-unit', 'unit', ob.unit, [['permille', 'Promille ‰'], ['percent', 'Percent %']])}</div>
-        <div class="field full"><span class="lbl">Show driving limit line</span>${limitSelect(ob.drivingLimit, ob.unit)}</div>
-      </div>
-    </details>
-    <div class="ob-foot"><div class="guide-actions">${back}<button class="btn btn-primary btn-grow" data-action="ob-finish">${invite && !invite.past ? 'Join the plan' : 'Show me my night'}</button></div></div>
+    ${body}
+    <p class="hint" style="margin:0">${ICONS.lock} Stays on this phone. Change it, your zone and units any time in Settings.</p>
+    <div class="ob-foot"><div class="guide-actions">${back}<button class="btn btn-primary btn-grow" data-action="ob-finish" ${chosen && profileValid(p) ? '' : 'disabled'}>${invite && !invite.past ? 'Join the plan' : 'Show me my night'}</button></div></div>
   </div>`;
 }
