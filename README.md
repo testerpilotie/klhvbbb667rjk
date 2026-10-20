@@ -32,10 +32,10 @@ Only `public/` is served. Everything else (tests, docs) stays private.
 
 **Production: optihol.com on the Hetzner box.**
 - The repo is checked out at `/home/optihol/klhvbbb667rjk` (owned by user `optihol`).
-- Caddy runs in the shared `scaffold-prod-caddy-1` container. That checkout is mounted
-  at `/srv/optihol-sock`, and the `optihol.com` block in
-  `/home/scaffold/scaffold/infra/Caddyfile` serves `/srv/optihol-sock/public` with
-  `file_server`.
+- Caddy runs as the standalone `sites-caddy-1` container (`/home/scaffold/sites`, which
+  also serves jokulu.ee). That checkout is mounted read-only at `/srv/optihol-sock`, and
+  the `optihol.com` block in `/home/scaffold/sites/Caddyfile` serves
+  `/srv/optihol-sock/public` with `file_server`.
 
 To release a new version:
 
