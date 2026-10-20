@@ -173,3 +173,21 @@ onboarding is consent, then the body basics, then straight to the Now screen. Ev
 **0.5–0.7 ‰**; zone, units and the driving line live under Settings → Your zone. An invite still
 pre-sets the inviter's zone. The driving limit line (and the "Under x ‰" tile it drives) is now
 **off by default**; it's opt-in in Settings. Existing users keep whatever they saved.
+
+---
+
+# Nothing you need goes missing (v2.9.3)
+
+**Diagnosis (growth lens).** Two leaks in the first session. The checklist vanished the moment
+it worked: tap "Log a drink" and the night view hid it; tap "Hide this" and it was gone forever.
+The install button, the single biggest lever for a PWA (no icon, no second night), only appeared
+once it was the *next* step, i.e. after planning and inviting. Most people never got there.
+
+**Changes**
+1. **Install is step two** whenever the browser can install (Chrome's prompt, or iOS): right
+   under the "2 beers gets you there" line, as a primary button. Elsewhere it stays after the invite.
+2. **Every open step has its button**, not just the next one. Order suggests, it doesn't gate.
+3. **Hide folds, it doesn't delete.** "Hide this" leaves a one-line row (progress ring, next step);
+   one tap brings the list back. During a night the list sits folded at the bottom, under the gauge.
+   It leaves for good only when complete, or after four nights.
+4. **Install lives in Settings → App** until the app runs from the home screen, so it can't be lost.
