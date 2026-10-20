@@ -47,7 +47,7 @@ To release a new version:
    sudo -u optihol git -C /home/optihol/klhvbbb667rjk pull
    ```
 
-No Caddy reload is needed for content changes.
+No Caddy reload is needed for content changes. Caddy sends `Cache-Control: no-cache` on every file, and the service worker installs each version atomically (fresh from the server), so users never get a mix of old and new files.
 
 The same origin matters: on first launch v2 reads v1's IndexedDB (`OptiholDB`), so
 existing users keep their profile and drink history.

@@ -1,6 +1,6 @@
 {
   "name": "optihol",
-  "version": "2.9.0",
+  "version": "2.9.1",
   "private": true,
   "type": "module",
   "description": "Installable BAC tracker that keeps you in your target zone. Static PWA, no backend.",

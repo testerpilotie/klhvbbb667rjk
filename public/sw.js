@@ -1,5 +1,10 @@
 // Offline-first service worker: the whole app is a handful of static files.
-const CACHE = 'optihol-v2.9.0';
+//
+// Versions are atomic. Installing a version downloads every app file fresh from the server
+// (bypassing the browser's HTTP cache), and app files are then served only from that
+// version's cache. Never mix files from two versions: a new app.js with an old model.js
+// breaks the app. Bump CACHE on every release so installed copies pick up the update.
+const CACHE = 'optihol-v2.9.1';
 const SHELL = [
   './',
   './index.html',
@@ -29,7 +34,12 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches
+      .open(CACHE)
+      .then((c) => c.addAll(SHELL.map((url) => new Request(url, { cache: 'reload' }))))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener('activate', (event) => {
@@ -49,20 +59,22 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Stale-while-revalidate for same-origin GETs.
+// App files come from this version's cache; anything else goes to the network.
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
-      const cached = await cache.match(request, { ignoreSearch: true });
-      const network = fetch(request)
-        .then((res) => {
-          if (res.ok) cache.put(request, res.clone());
-          return res;
-        })
-        .catch(() => cached);
-      return cached || network;
+      // Opening the app (/, /?crew=…, /?log=pint) is the app shell.
+      const path = new URL(request.url).pathname;
+      const key = request.mode === 'navigate' && (path.endsWith('/') || path.endsWith('/index.html')) ? './' : request;
+      const cached = await cache.match(key, { ignoreSearch: true });
+      if (cached) return cached;
+      try {
+        return await fetch(request);
+      } catch (err) {
+        return (await cache.match('./')) ?? Response.error();
+      }
     }),
   );
 });
