@@ -40,7 +40,20 @@ function toggle(action, on, label, sub, disabled = false) {
     <span><b>${label}</b><small>${sub}</small></span><span class="switch"></span></button>`;
 }
 
-export function settingsView({ state, d, reminders }) {
+/** Never more than a tap from installing, whatever happened to the checklist. */
+function appGroup(install) {
+  if (install.standalone) return '';
+  const body = install.prompt
+    ? `<button class="btn btn-primary" data-action="install">${ICONS.download}Install Optihol</button>`
+    : `<p class="muted" style="font-size:14.5px">${install.ios ? 'In Safari, tap <b>Share</b> and then <b>Add to Home Screen</b>.' : 'Open your browser menu and choose <b>Install app</b> or <b>Add to Home screen</b>.'}</p>`;
+  return `<div class="group-title">App</div>
+    <section class="group"><div class="group-body">
+      <div class="install-head"><img src="icons/icon-192.png" alt=""><div><b>Put Optihol on your home screen</b><span>Opens instantly, works without signal.</span></div></div>
+      ${body}
+    </div></section>`;
+}
+
+export function settingsView({ state, d, reminders, install }) {
   const s = state.settings;
   const customs = state.customDrinks.length
     ? `<div class="list">${state.customDrinks
@@ -58,6 +71,7 @@ export function settingsView({ state, d, reminders }) {
     : 'Optihol starts from population averages. A breathalyzer reading during a night tunes the model to your body; two readings 45+ minutes apart also learn how fast you burn alcohol.';
 
   return `<h1 class="section-title">Settings</h1>
+    ${appGroup(install)}
     <div class="group-title">You</div>
     <section class="group"><div class="group-body form-grid" data-scope="profile">${profileFields(state.profile)}</div></section>
 

@@ -28,6 +28,7 @@ const ui = {
   historyTab: 'nights', // 'nights' | 'trends' | 'trophies'
   shownBac: null,
   ob: null, // onboarding draft
+  journeyOpen: false, // checklist unfolded during a night
   sheet: null, // { type: 'add' | 'custom' | 'edit' | 'reading', ... }
 };
 
@@ -205,23 +206,33 @@ function morningCandidate(state, sessions, active, now, nightOf) {
   return night.stats.peak >= 0.2 ? night : null; // a single light drink isn't worth asking about
 }
 
-/** The first-nights checklist. Disappears once dismissed or after four nights. */
+/**
+ * The first-nights checklist. "Hide this" only folds it to one line; it goes away for good once
+ * complete and dismissed, or after four nights.
+ */
 function journeyState(state, sessions, feels) {
-  if (state.journey.dismissed || sessions.length >= 4) return null;
+  if (sessions.length >= 4) return null;
   const rated = Object.values(state.nights).some((n) => n.rating);
   const homeHint = install.ios ? 'Safari: Share → Add to Home Screen' : 'Browser menu → Install app';
+  // The home-screen icon is what brings people back on the night, so it comes right after the
+  // profile whenever this browser can install. Elsewhere it waits until the plan and invite.
+  const home = { id: 'home', label: 'Put Optihol on your home screen', unlock: 'one tap at the bar, works offline', done: install.standalone || state.journey.installed,
+    action: install.prompt ? 'install' : 'home-done', cta: install.prompt ? 'Install' : 'I did it', hint: install.prompt ? '' : homeHint, primary: !!install.prompt };
+  const installable = !!(install.prompt || install.ios);
   const steps = [
     { id: 'profile', label: 'Set up your profile', unlock: 'pacing for your body', done: true },
+    ...(installable ? [home] : []),
     { id: 'plan', label: 'Plan a night', unlock: 'your drink-by-drink schedule', done: state.journey.planned, action: 'plan', cta: 'Plan one', primary: true },
     { id: 'invite', label: 'Invite a friend', unlock: 'a night paced together', done: (state.stats?.invitesSent ?? 0) > 0, action: 'invite', cta: '🍻 Invite', primary: true },
-    { id: 'home', label: 'Put Optihol on your home screen', unlock: 'one tap at the bar, works offline', done: install.standalone || state.journey.installed,
-      action: install.prompt ? 'install' : 'home-done', cta: install.prompt ? 'Install' : 'I did it', hint: install.prompt ? '' : homeHint },
+    ...(installable ? [] : [home]),
     { id: 'night', label: 'Log your first night', unlock: 'live pacing and your zone score', done: sessions.length > 0, action: 'add', cta: 'Log a drink' },
     { id: 'feel', label: 'Tap 🎯 when it feels just right', unlock: 'where your zone really is', done: feels.some((f) => f.feel === 'zone'), hint: 'During a night, right under the gauge' },
     { id: 'morning', label: 'Rate the morning after', unlock: 'your sweet spot', done: rated, hint: 'The day after a night out' },
   ];
   const done = steps.filter((x) => x.done).length;
-  return { steps, done, total: steps.length, next: steps.find((x) => !x.done) ?? null, complete: done === steps.length };
+  const complete = done === steps.length;
+  if (complete && state.journey.dismissed) return null;
+  return { steps, done, total: steps.length, next: steps.find((x) => !x.done) ?? null, complete, folded: state.journey.dismissed };
 }
 
 /** Weekly goals, streak and badge counts (night badges + weekly achievements). */
@@ -632,7 +643,18 @@ const actions = {
   },
   'plan-clear': () => S.update((s) => (s.plan = null)),
   'home-done': () => S.update((s) => (s.journey.installed = true)),
-  'journey-hide': () => S.update((s) => (s.journey.dismissed = true)),
+  'journey-hide'() {
+    ui.journeyOpen = false;
+    S.update((s) => (s.journey.dismissed = true));
+  },
+  'journey-fold'() {
+    ui.journeyOpen = false;
+    render();
+  },
+  'journey-show'() {
+    ui.journeyOpen = true;
+    S.update((s) => (s.journey.dismissed = false));
+  },
   night(el) {
     const id = el.dataset.id;
     const night = derive(S.getState()).nights().find((n) => n.id === id);

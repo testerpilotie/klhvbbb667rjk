@@ -26,7 +26,7 @@ export function nowView(ctx) {
   const { d } = ctx;
   if (d.active) {
     // At the bar, the gauge comes first.
-    return hero(ctx) + checkinRow(ctx) + tonightCard(ctx) + drinksCard(ctx) + disclaimer();
+    return hero(ctx) + checkinRow(ctx) + tonightCard(ctx) + drinksCard(ctx) + journeyCard(ctx) + disclaimer();
   }
   const fresh = !d.sessions.length;
   return (
@@ -37,7 +37,7 @@ export function nowView(ctx) {
     (fresh ? journeyCard(ctx) + hero(ctx) : hero(ctx) + journeyCard(ctx)) +
     (fresh ? '' : weekCard(ctx)) +
     idleBlocks(ctx) +
-    (d.journey ? '' : installCard(ctx)) +
+    (d.journey && !d.journey.folded ? '' : installCard(ctx)) +
     disclaimer()
   );
 }
@@ -218,10 +218,19 @@ function idleBlocks({ state, d }) {
     ${nightCard(d.nightOf(last), d, state.settings.unit, state.settings.standardGrams)}`;
 }
 
-/** First nights: a short checklist where every step says what it unlocks. */
-function journeyCard({ state, d }) {
+/**
+ * First nights: a short checklist where every step says what it unlocks. Folded to one line when
+ * hidden, and during a night (the gauge comes first), but always one tap from coming back.
+ */
+function journeyCard({ state, d, ui }) {
   const j = d.journey;
   if (!j) return '';
+  if (j.folded || (d.active && !ui.journeyOpen)) {
+    return `<button class="card journey-fold" data-action="journey-show">
+      <span class="j-ring" style="--p:${((j.done / j.total) * 100).toFixed(0)}%"><b>${j.done}</b></span>
+      <span class="j-text"><b>Getting to know you · ${j.done} of ${j.total}</b><small>${j.next ? `Next: ${j.next.label}` : 'All done'}</small></span>
+      <span class="j-chev" aria-hidden="true">›</span></button>`;
+  }
   const zone = { min: state.settings.zoneMin, max: state.settings.zoneMax };
   const recipe = !d.sessions.length
     ? `<div class="recipe">${ICONS.check}<p>${recipeSentence(recipesFor(state.profile, zone)[`${zone.min}-${zone.max}`])}</p></div>`
@@ -229,9 +238,10 @@ function journeyCard({ state, d }) {
   const rows = j.steps
     .map((st) => {
       const isNext = st === j.next;
-      const button = isNext && st.action ? `<button class="btn ${st.primary ? 'btn-primary' : 'btn-ghost'} btn-sm" data-action="${st.action}">${st.cta}</button>` : '';
+      // Every open step stays tappable; only the next one is highlighted.
+      const button = !st.done && st.action ? `<button class="btn ${isNext && st.primary ? 'btn-primary' : 'btn-ghost'} btn-sm" data-action="${st.action}">${st.cta}</button>` : '';
       return `<li class="${st.done ? 'done' : isNext ? 'next' : 'todo'}"><span class="j-dot">${st.done ? '✓' : ''}</span>
-        <div class="j-text"><b>${st.label}</b><small>${st.done ? 'Done' : isNext && st.hint ? st.hint : `Unlocks ${st.unlock}`}</small></div>${button}</li>`;
+        <div class="j-text"><b>${st.label}</b><small>${st.done ? 'Done' : (isNext || st.id === 'home') && st.hint ? st.hint : `Unlocks ${st.unlock}`}</small></div>${button}</li>`;
     })
     .join('');
   return `<section class="card journey">
@@ -239,7 +249,7 @@ function journeyCard({ state, d }) {
     <div class="j-bar"><i style="width:${((j.done / j.total) * 100).toFixed(0)}%"></i></div>
     ${recipe}
     <ol class="j-steps">${rows}</ol>
-    <div class="j-foot">${j.complete ? '<button class="btn btn-primary btn-sm" data-action="journey-hide">Nice</button>' : '<button class="link" data-action="journey-hide">Hide this</button>'}</div>
+    <div class="j-foot">${j.complete ? '<button class="btn btn-primary btn-sm" data-action="journey-hide">Nice</button>' : `<button class="link" data-action="${d.active ? 'journey-fold' : 'journey-hide'}">Hide this</button>`}</div>
   </section>`;
 }
 

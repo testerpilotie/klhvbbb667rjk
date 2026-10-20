@@ -4,7 +4,7 @@
 // (bypassing the browser's HTTP cache), and app files are then served only from that
 // version's cache. Never mix files from two versions: a new app.js with an old model.js
 // breaks the app. Bump CACHE on every release so installed copies pick up the update.
-const CACHE = 'optihol-v2.9.2';
+const CACHE = 'optihol-v2.9.3';
 const SHELL = [
   './',
   './index.html',

@@ -805,6 +805,10 @@ button.ins:not([disabled]) { cursor: pointer; }
 .j-steps li.todo { opacity: 0.75; }
 .j-steps .btn-sm { flex: none; }
 .j-foot { display: flex; justify-content: flex-end; }
+.journey-fold { width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.j-ring { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--mint) var(--p), var(--surface-3) 0); }
+.j-ring b { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); font-size: 13px; }
+.j-chev { font-size: 22px; color: var(--muted); }
 
 .plan-card { display: grid; gap: 10px; border-color: color-mix(in srgb, var(--amber) 40%, var(--line)); }
 .plan-card .card-title { margin-bottom: 0; }
